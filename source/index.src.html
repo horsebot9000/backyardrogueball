@@ -1,0 +1,2083 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backyard Rogueball</title>
+<link rel="icon" href="data:,">
+<style>
+  /*FONTS_CSS*/
+  :root {
+    --g1: #1d4a26; --g2: #173f20; --g3: #10301a; --gl: #3f8a4e; --gd: #0a1f0f;
+    --yellow: #ffd23a; --yellow-d: #b88a00; --yellow-l: #fff09a; --ink: #000;
+    --chalk: #f4f4e8; --muted: #a9c9a9; --red: #e0301e; --sky: #7fd6ff;
+    --paper: #f3ecc8; --paper-d: #c9bf8f; --paper-ink: #1c241a; --good: #6be06b; --bad: #ff6a5a;
+    --i3: #3a7bff; --i4: #8a4dff; --i5: #ff3fb4; --i6: #ff3030; --gold: #ffb800;
+    --r-common: #9ca0a4; --r-rare: #2f6fff; --r-epic: #9b3dff; --r-legendary: #ffb800;
+  }
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  html, body { margin: 0; height: 100%; }
+  body { color: var(--chalk); overflow: hidden; font: 21px/1.15 "VT323", "Lucida Console", monospace;
+    background: var(--g2); -webkit-font-smoothing: none; font-smooth: never; }
+  h1, h2, h3, h4, .display { font-family: "VT323", monospace; font-weight: 400; margin: 0; letter-spacing: 0; text-transform: uppercase;}
+  button, select { font: inherit; }
+  img { image-rendering: pixelated; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* bevels: light top-left, dark bottom-right, hard 1px black outline */
+  .bevel { border: 2px solid var(--ink); box-shadow: inset 2px 2px 0 rgba(255,255,255,.35), inset -2px -2px 0 rgba(0,0,0,.45); }
+  .sunk { border: 2px solid var(--ink); box-shadow: inset 2px 2px 0 rgba(0,0,0,.5), inset -2px -2px 0 rgba(255,255,255,.18); }
+
+  #canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: block; border: 0; padding: 0; background: #000; outline: none; visibility: hidden; image-rendering: pixelated; }
+  body.playing { background: #000; }
+  body.playing #canvas { visibility: visible; }
+  .gside { position: fixed; top: 0; bottom: 0; display: none; overflow-y: auto; overflow-x: hidden; z-index: 5; padding: 10px 10px 16px; background: #071008;
+    contain: strict; will-change: transform; }
+  #canvas { will-change: transform; }
+
+  body.playing .gside { display: block; }
+  #gLeft { left: 0; border-right: 3px solid var(--yellow-d); } #gRight { right: 0; border-left: 3px solid var(--yellow-d); }
+  .gside .gh { font-family: "VT323", monospace; font-size: 18.5px; color: var(--yellow); background: #000; border-bottom: 2px solid var(--yellow-d); padding: 3px 6px; margin: 0 0 8px; text-transform: uppercase;}
+  .gsec { margin-bottom: 14px; }
+  #gCards { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 6px; }
+  #gCards .joker { width: 100%; max-width: min(200px, calc(((100vh - 90px) / 5 - 14px) * 5 / 7)); }
+  #gCards .joker p { display: none; }
+
+  .pus { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gwho { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .gwho img { width: 48px; height: 48px; background: var(--gl); border: 2px solid #fff; flex: none; }
+  .gwho b { font-family: "VT323"; font-weight: 400; font-size: 22px; display: block; line-height: 1.05; }
+  .gwho small { color: var(--muted); font-size: 18px; }
+  .gstat { margin-bottom: 9px; }
+  .gstat .gl { display: flex; justify-content: space-between; align-items: baseline; }
+  .gstat .gl span { font-family: "VT323", monospace; font-size: 18px; color: var(--chalk); text-transform: uppercase;}
+  .gstat .gl b { font-family: "VT323", monospace; font-weight: 400; font-size: 31px; color: #fff; line-height: 1; text-transform: uppercase;}
+  .gstat .gl b.up { color: var(--good); } .gstat .gl b.down { color: var(--bad); }
+  .gbar { height: 7px; background: #1b2a1d; border: 1px solid #000; margin: 2px 0 4px; }
+  .gbar i { display: block; height: 100%; background: var(--yellow); }
+  .gchips { display: flex; flex-wrap: wrap; gap: 3px; }
+  .gchips .c { font-size: 16px; line-height: 1.2; padding: 0 4px; border: 1px solid #333; background: #000; color: var(--muted); }
+  .gchips .c.base { color: #fff; border-color: #666; } .gchips .c.up { color: var(--good); border-color: #2b6a2b; } .gchips .c.down { color: var(--bad); border-color: #7a2a22; }
+  .gchips .c.set { color: var(--sky); border-color: #2b5a7a; }
+  .gchips .c.sit { color: #6a6a5a; border-style: dashed; } .gchips .c.sit.on { color: #000; background: var(--good); border: 1px solid var(--good); } .gchips .c.sit.on.neg { background: var(--bad); border-color: var(--bad); }
+  .gscore { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .gscore .inn { grid-column: 1 / -1; }
+  .gscore > div { background: #000; border: 2px solid var(--gl); padding: 3px 6px; min-width: 0; }
+  .gscore small { display: block; color: var(--muted); font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gscore b { font-family: "VT323"; font-weight: 400; font-size: 26px; color: var(--yellow); line-height: 1.1; }
+  .gscore b i { font-style: normal; font-size: 18px; color: var(--muted); font-weight: 400; }
+  .gsit { font-size: 18px; color: var(--muted); margin: 4px 0 0; }
+  .gaug { font-size: 18px; padding: 2px 0; border-bottom: 1px solid #1b2a1d; } .gaug b { font-weight: 400; color: var(--chalk); } .gaug small { color: var(--muted); }
+  .gside .vol { display: flex; margin-bottom: 8px; } .gside .vol input { width: 100%; }
+
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden;
+    background-color: var(--g2);
+    background-image: repeating-conic-gradient(var(--g1) 0 25%, var(--g2) 0 50%); background-size: 4px 4px; }
+  body.playing #app { display: none; }
+
+  .bar { display: flex; align-items: center; gap: 14px; padding: 8px 16px; background: #000; border-bottom: 4px solid var(--yellow-d); flex-wrap: wrap; }
+  .bar h1 { font-size: 31px; color: var(--yellow); text-shadow: 3px 3px 0 var(--red); margin-right: auto; }
+  .tile { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
+  .tile b { font-family: "VT323", monospace; font-weight: 400; font-size: 28.5px; color: var(--yellow); line-height: 1; text-transform: uppercase;}
+  .tile small { font-size: 18px; color: var(--muted); }
+  .tile.money b { color: var(--good); }
+  .puBar { display: flex; gap: 4px; }
+  .puIcon { position: relative; display: inline-block; width: 44px; height: 32px; }
+  .puIcon img { width: 44px; height: 32px; display: block; }
+  .puIcon.j img { width: 40px; height: 24px; margin-top: 4px; }
+  .puIcon b { position: absolute; right: -4px; bottom: -4px; min-width: 18px; padding: 0 3px; background: #000; color: var(--yellow); border: 2px solid var(--yellow); font-family: "VT323", monospace; font-weight: 400; font-size: 16px; line-height: 13px; text-align: center; text-transform: uppercase;}
+  .puIcon.zero img { filter: grayscale(1) brightness(.55); }
+  .vol { display: flex; align-items: center; gap: 6px; font-size: 18px; color: var(--muted); }
+  .vol input { width: 80px; accent-color: var(--yellow); }
+  .iconbtn { background: var(--g1); border: 2px solid var(--ink); box-shadow: inset 2px 2px 0 rgba(255,255,255,.25), inset -2px -2px 0 rgba(0,0,0,.5); color: var(--chalk); padding: 5px 10px; cursor: pointer; font-size: 18px; }
+
+  main { flex: 1; overflow: auto; padding: 18px 16px 40px; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  .screen { display: none; } .screen.on { display: block; }
+
+  /* the game's yellow push buttons, as pixel bevels */
+  .btn { appearance: none; cursor: pointer; padding: 8px 16px; background: var(--yellow); color: #1a1200; font-family: "VT323", monospace; font-size: 22.5px;
+    border: 2px solid var(--ink); box-shadow: inset 3px 3px 0 var(--yellow-l), inset -3px -3px 0 var(--yellow-d); text-transform: uppercase;}
+  .btn:hover { background: #ffe066; }
+  .btn:active { box-shadow: inset 3px 3px 0 var(--yellow-d), inset -3px -3px 0 var(--yellow-l); padding: 9px 15px 7px 17px; }
+  .btn:disabled { background: #8a8a72; color: #3a3a30; box-shadow: inset 3px 3px 0 #a8a890, inset -3px -3px 0 #5e5e4c; cursor: not-allowed; }
+  .btn.big { font-size: 31px; padding: 12px 26px; }
+  .btn.ghost { background: var(--g1); color: var(--chalk); box-shadow: inset 2px 2px 0 rgba(255,255,255,.25), inset -2px -2px 0 rgba(0,0,0,.5); font-size: 20px; padding: 6px 12px; }
+  .btn.ghost:hover { background: #26602f; }
+  .btn.sm { font-size: 18.5px; padding: 5px 9px; }
+  .btn:focus-visible, .iconbtn:focus-visible, .pcard:focus-visible, .chip:focus-visible, select:focus-visible { outline: 3px dotted var(--sky); outline-offset: 2px; }
+  .lede { color: var(--muted); max-width: 66ch; margin: 6px 0 16px; }
+  h2 { font-size: 40px; color: var(--yellow); text-shadow: 3px 3px 0 #000; }
+  select { background: #000; color: var(--yellow); border: 2px solid var(--yellow-d); padding: 5px 8px; font-family: "VT323", monospace; font-size: 21.5px; text-transform: uppercase;}
+
+  /* player card: baseball card on cheap paper */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .pcard { align-self: start; display: block; background: var(--paper); color: var(--paper-ink); padding: 10px 12px 12px; position: relative; cursor: pointer; text-align: left; width: 100%;
+    border: 3px solid var(--ink); box-shadow: inset 3px 3px 0 #fffbe6, inset -3px -3px 0 var(--paper-d); }
+  .pcard:hover { background: #fff6d2; }
+  .pcard.pro { outline: 3px solid var(--yellow); outline-offset: -8px; }
+  .pcard .top { display: flex; gap: 10px; align-items: center; padding-right: 40px; }
+  .pcard .face { width: 64px; height: 64px; background: var(--gl); border: 2px solid var(--ink); flex: none; }
+  .pcard .nm { font-family: "VT323"; font-weight: 400; font-size: 24.5px; line-height: 1.05; }
+  .pcard .meta { font-size: 18px; color: #4b5a46; margin-top: 3px; }
+  .pcard .ovr { position: absolute; top: 8px; right: 8px; font-family: "VT323", monospace; font-size: 28.5px; color: #fff; background: var(--g1); border: 2px solid var(--ink); padding: 2px 5px; line-height: 1; text-transform: uppercase;}
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 6px; }
+  .tag { font-size: 16px; padding: 0 5px; background: #d8cfa5; color: #2d3628; border: 2px solid var(--ink); }
+  .tag.c { background: #ff9d8f; } .tag.ss { background: #9cc2ff; } .tag.b1 { background: #ffd66b; } .tag.of { background: #9be28c; } .tag.p { background: #c9a7ff; }
+  .pips { display: grid; grid-template-columns: 64px 1fr; gap: 3px 6px; align-items: center; font-size: 18px; }
+  .pip-row { display: flex; gap: 2px; } .pip-row i { width: 10px; height: 10px; background: #d2c79a; border: 1px solid #8a8160; } .pip-row i.on { background: var(--red); border-color: #7a1a10; }
+  .raw { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px 6px; margin-top: 8px; font-size: 18px; }
+  .raw div { background: #e8deb2; border: 1px solid #a99d70; padding: 1px 5px; display: flex; justify-content: space-between; }
+  .raw div.up { background: #bdf0a8; } .raw div.down { background: #ffc2b8; }
+  .pitches { font-size: 18px; color: #4b5a46; margin-top: 6px; }
+  .price { display: inline-block; font-family: "VT323", monospace; color: var(--good); font-size: 22.5px; text-transform: uppercase;}
+  .pcard .price { color: #136b1e; }
+
+  /* panels: dialog boxes with a title strip */
+  .board { background: var(--g3); border: 3px solid var(--ink); box-shadow: inset 3px 3px 0 var(--gl), inset -3px -3px 0 var(--gd); padding: 14px; }
+  .board h3 { font-size: 25.5px; color: var(--yellow); margin: -14px -14px 12px; padding: 6px 12px; background: #000; border-bottom: 3px solid var(--yellow-d); }
+  .board h3.sub { margin: 14px 0 8px; padding: 0; background: none; border: 0; font-size: 19.5px; color: var(--yellow); }
+  .hub { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 980px) { .hub { grid-template-columns: 1fr; } }
+  .draftgrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .draftgrid { grid-template-columns: 1fr; } }
+
+  .builder { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 700px) { .builder { grid-template-columns: 1fr; } }
+  .diamond { position: relative; aspect-ratio: 4 / 3.6; overflow: hidden; background: #2f7a3a center / cover no-repeat; border: 3px solid var(--ink); image-rendering: pixelated; }
+  .diamond::after { content: ""; position: absolute; inset: 0; background-image: repeating-conic-gradient(rgba(0,0,0,.35) 0 25%, transparent 0 50%); background-size: 4px 4px; pointer-events: none; }
+  .slot { position: absolute; transform: translate(-50%, -50%); z-index: 2; display: flex; flex-direction: column; align-items: center; width: 84px; }
+  .slot .lbl { font-family: "VT323", monospace; font-size: 17px; color: #000; background: var(--yellow); padding: 0 4px; border: 2px solid #000; margin-bottom: 2px; text-transform: uppercase;}
+  .slot .empty { width: 46px; height: 46px; border: 2px dashed #fff; background: rgba(0,0,0,.35); }
+  .chip { display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none; touch-action: none; background: none; border: 0; color: inherit; padding: 0; }
+  .chip .face { width: 46px; height: 46px; background: var(--gl); border: 3px solid #fff; outline: 2px solid #000; pointer-events: none; }
+  .chip.pro .face { background: #1b4d24; border-color: var(--yellow); }
+  .chip .nm { font-size: 16px; background: #000; color: #fff; padding: 0 4px; margin-top: 4px; white-space: nowrap; max-width: 96px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; border: 1px solid #fff; }
+  .chip.bad .face { border-color: var(--bad); }
+  .chip.sel .face { outline: 3px dotted var(--sky); outline-offset: 2px; }
+  [data-drop].over .face, [data-drop].over .bench-empty, [data-drop].over .empty { outline: 3px dashed var(--yellow); outline-offset: 2px; }
+  .order { display: flex; flex-direction: column; gap: 3px; }
+  .orow { display: flex; align-items: center; gap: 8px; background: #000; border: 2px solid var(--gl); padding: 3px 6px; touch-action: none; cursor: grab; user-select: none; }
+  .orow:hover { border-color: var(--yellow); }
+  .orow.over { border: 2px dashed var(--yellow); }
+  .orow > * { pointer-events: none; }
+  .orow .n { font-family: "VT323", monospace; width: 18px; color: var(--yellow); text-transform: uppercase;}
+  .orow img { width: 30px; height: 30px; background: var(--gl); border: 1px solid #fff; }
+  .orow .who { flex: 1; min-width: 0; }
+  .orow .who b { display: block; font-weight: 400; font-size: 19.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .orow .who small { display: block; color: var(--muted); font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bench { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .bench .bslot { width: 76px; display: flex; flex-direction: column; align-items: center; }
+  .bench-empty { width: 46px; height: 46px; border: 2px dashed var(--gl); }
+  .warn { color: var(--yellow); font-size: 18px; margin-top: 8px; } .warn div { margin-top: 2px; }
+  .teamname { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+
+  table.mini { width: 100%; border-collapse: collapse; font-size: 18px; margin-top: 10px; }
+  .mini th { color: var(--yellow); font-weight: 400; font-family: "VT323", monospace; font-size: 18px; text-align: right; padding: 3px 4px; border-bottom: 2px solid var(--gl); text-transform: uppercase;}
+  .mini th:nth-child(-n+2) { text-align: left; }
+  .mini td { padding: 3px 4px; text-align: right; border-bottom: 1px solid #22462a; font-variant-numeric: tabular-nums; }
+  .mini td:nth-child(-n+2) { text-align: left; }
+  .mini td.pos { color: var(--yellow); font-family: "VT323", monospace; font-size: 18px; text-transform: uppercase;}
+
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 19.5px; }
+  .facts dt { color: var(--muted); } .facts dd { margin: 0; }
+  .boss { color: #fff; background: var(--red); display: inline-block; padding: 0 6px; border: 2px solid #000; font-size: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pill { background: #000; border: 2px solid var(--gl); padding: 2px 8px; font-size: 18px; color: var(--chalk); }
+  button.pill { cursor: pointer; } button.pill:hover { border-color: var(--yellow); color: var(--yellow); }
+  .oppfield { width: 100%; border: 3px solid #000; display: block; margin-bottom: 10px; }
+
+  .tb { display: grid; gap: 6px; }
+  .tb .row { display: flex; gap: 8px; align-items: center; background: #000; border: 2px solid var(--gl); padding: 5px 6px; }
+  .tb .row img { width: 40px; height: 40px; background: var(--gl); border: 2px solid #fff; flex: none; }
+  .tb .row .who { flex: 1; cursor: pointer; min-width: 0; }
+  .tb .row .who b { font-family: "VT323"; font-weight: 400; font-size: 21px; }
+  .tb .row .who small { display: block; color: var(--muted); font-size: 18px; }
+  .tb .acts { display: flex; flex-direction: column; gap: 4px; }
+
+  /* collectible cards */
+  .jgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: end; }
+  .shopgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+  @media (max-width: 760px) { .shopgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .jgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .sitem { display: flex; flex-direction: column; gap: 6px; justify-content: flex-end; } .sitem > .joker { flex: 1 0 auto; }
+  .sitem .btn { width: 100%; }
+  /* augment ticket: short, perforated */
+  /* augments: square stamps, clearly not cards */
+  .ticket { aspect-ratio: 1 / 1; background: #0e2433; color: #d9f2ff; border: 3px solid #000; outline: 3px dashed #6cc7ff; outline-offset: -9px;
+    padding: 14px; display: flex; flex-direction: column; gap: 6px; justify-content: center; text-align: center; }
+  .ticket .kind { font-family: "VT323", monospace; font-size: 16px; background: #6cc7ff; color: #0e2433; align-self: center; padding: 0 6px; text-transform: uppercase; }
+  .ticket h4 { font-size: 21px; color: #fff; } .ticket p { margin: 0; font-size: 18px; line-height: 1.1; color: #bfe3f7; }
+  .putile { background: #000; border: 3px solid var(--gold); padding: 6px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+  .putile img { width: 88px; height: 64px; } .putile img.j { width: 80px; height: 48px; }
+  .putile small { color: var(--muted); font-size: 18px; }
+  .econ { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .eb { background: #000; border: 2px solid var(--gl); padding: 6px 8px; display: flex; flex-direction: column; }
+  .eb b { font-family: "VT323", monospace; font-weight: 400; font-size: 34px; color: var(--good); line-height: 1.1; text-transform: uppercase;}
+  .eb small { color: var(--muted); font-size: 18px; line-height: 1.15; }
+  .paygrid { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto; gap: 2px 8px; margin: 10px 0 4px; font-size: 18px; align-items: baseline; }
+  .paygrid b { font-family: "VT323", monospace; font-weight: 400; color: var(--yellow); text-transform: uppercase;}
+  .sitem.dead .joker { opacity: .45; filter: grayscale(.7); }
+  .joker .art small { font-family: "VT323"; font-size: 18px; text-shadow: 1px 1px 0 #000; }
+  .soldslot { min-height: 120px; border: 3px dashed var(--gl); display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  /* stat bars */
+  .sgrp { margin-top: 8px; }
+  .sgrp .gh { font-family: "VT323", monospace; font-size: 18px; color: #5d6b55; margin-bottom: 2px; text-transform: uppercase;}
+  .sbar { display: grid; grid-template-columns: 74px 1fr 28px; gap: 6px; align-items: center; font-size: 18px; line-height: 1.15; }
+  .sbar .tr { position: relative; height: 9px; background: #d6cca0; border: 1px solid #7d7454; }
+  .sbar .tr i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f6b3a; background-image: repeating-linear-gradient(90deg, transparent 0 3px, rgba(0,0,0,.25) 3px 4px); }
+  .sbar .tr i.hot { background-color: #c47a00; }
+  .sbar .tr u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #000; left: 80%; }
+  .sbar b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 400; }
+  .sbar b.up { color: #157a1e; } .sbar b.down { color: #b3261a; }
+  .chip .st { font-size: 16px; background: #000; color: var(--yellow); padding: 0 3px; border: 1px solid var(--yellow-d); margin-top: 1px; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .joker { --rc: var(--r-common); position: relative; aspect-ratio: 5 / 7; padding: 6px; background: var(--paper); color: var(--paper-ink);
+    border: 5px solid var(--rc); outline: 2px solid #000; display: flex; flex-direction: column; gap: 4px; }
+  .joker .art { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center; padding: 6px; border: 2px solid #000;
+    background-color: var(--rc); background-image: repeating-conic-gradient(rgba(0,0,0,.18) 0 25%, transparent 0 50%); background-size: 4px 4px;
+    font-family: "VT323", monospace; font-size: 21.5px; line-height: 1.15; color: #fff; text-shadow: 2px 2px 0 #000; text-transform: uppercase;}
+  .joker.rare { --rc: var(--r-rare); } .joker.epic { --rc: var(--r-epic); } .joker.legendary { --rc: var(--r-legendary); background-color: #ffe9a3; }
+  .joker .rr { position: absolute; top: -12px; right: 6px; font-family: "VT323", monospace; font-size: 16px; color: #fff; background: var(--rc); padding: 0 5px; border: 2px solid #000; text-transform: uppercase;}
+  .joker .ck { position: absolute; top: -12px; left: 6px; font-family: "VT323", monospace; font-size: 16px; color: #0e2433; background: #ffd23a; padding: 0 6px; border: 2px solid #000; text-transform: uppercase; }
+  .joker { container-type: inline-size; }
+  .joker h4 { font-size: clamp(19px, 15cqw, 34px); line-height: 1; }
+  .joker p { margin: 0; font-size: clamp(16px, 11.5cqw, 24px); line-height: 1.05; }
+  .joker .on { font-size: clamp(15px, 10cqw, 22px); color: #4b5a46; }
+  .joker .art { font-size: clamp(20px, 16cqw, 36px) !important; line-height: 1.05 !important; padding: 4px !important; }
+  .joker .art small { font-size: clamp(15px, 10.5cqw, 24px) !important; }
+  .joker .btn { align-self: stretch; }
+  .joker .btn.ghost { background: #3a3a2c; color: #fff; }
+  .joker.emptyslot { background: rgba(0,0,0,.35); border: 3px dashed var(--gl); outline: 0; color: var(--muted); align-items: center; justify-content: center; font-size: 18px; }
+  .pushop { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; margin-top: 12px; }
+  .pu { background: #000; border: 2px solid var(--gl); padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+  .pu img { width: 88px; height: 64px; } .pu img.j { width: 80px; height: 48px; margin: 8px 0; }
+  .pu small { color: var(--muted); font-size: 18px; }
+
+  .gameover { font-family: "Press Start 2P", monospace; font-size: 44px; color: var(--bad); text-shadow: 5px 5px 0 #000; margin: 10px 0 8px; text-transform: none; }
+  .overline { font-size: 26px; color: var(--chalk); margin: 0 0 18px; }
+  .score { display: flex; align-items: center; gap: 22px; margin: 6px 0 16px; flex-wrap: wrap; }
+  .score .big { font-family: "VT323", monospace; font-size: 79.5px; line-height: 1; text-shadow: 4px 4px 0 #000; text-transform: uppercase;}
+  .score .w { color: var(--good); } .score .l { color: var(--bad); }
+  .pay { font-size: 21px; display: grid; grid-template-columns: auto auto; gap: 3px 24px; width: max-content; }
+  .pay .t { font-family: "VT323", monospace; color: var(--good); font-size: 25.5px; text-transform: uppercase;}
+  table.roster { width: 100%; border-collapse: collapse; font-size: 18px; }
+  .roster th { text-align: left; font-weight: 400; color: var(--yellow); font-family: "VT323", monospace; font-size: 18px; padding: 4px 6px; border-bottom: 2px solid var(--gl); text-transform: uppercase;}
+  .roster td { padding: 5px 6px; border-bottom: 1px solid #22462a; }
+  .roster td.n, .roster th.n { font-variant-numeric: tabular-nums; text-align: right; }
+  .augs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .aug { background: var(--paper); color: var(--paper-ink); padding: 14px; cursor: pointer; text-align: left;
+    border: 3px solid var(--ink); box-shadow: inset 3px 3px 0 #fffbe6, inset -3px -3px 0 var(--paper-d); }
+  .aug:hover { background: #fff6d2; }
+  .aug h3 { color: #12401b; font-size: 24px; } .aug p { margin: 8px 0 0; font-size: 19.5px; }
+
+  /* case-opening reel */
+  #scr-reel { text-align: center; }
+  .reel-wrap { position: relative; margin: 22px auto 16px; max-width: 1100px; height: 216px; overflow: hidden; background: #000; border: 3px solid #000; outline: 3px solid var(--yellow-d); }
+  .reel-wrap::before, .reel-wrap::after { content: ""; position: absolute; top: 0; bottom: 0; width: 100px; z-index: 2; pointer-events: none;
+    background-image: repeating-conic-gradient(#000 0 25%, transparent 0 50%); background-size: 4px 4px; }
+  .reel-wrap::before { left: 0; } .reel-wrap::after { right: 0; }
+  .reel { position: absolute; left: 0; top: 14px; display: flex; gap: 10px; will-change: transform; }
+  .rtile { width: 188px; height: 186px; flex: none; overflow: hidden; background: #222; position: relative; border: 3px solid #000; border-bottom: 10px solid var(--i3); }
+  .rtile img { width: 100%; height: 136px; object-fit: cover; display: block; }
+  .rtile .cap { position: absolute; left: 0; right: 0; bottom: 0; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 6px; background: #000; color: #fff; font-size: 18px; text-align: left; line-height: 1.05; }
+  .rtile .inn { font-family: "VT323", monospace; font-size: 31px; text-transform: uppercase;} .rtile .inn small { font-family: "VT323"; font-size: 18px; margin-left: 2px; }
+  .rtile.i2 { border-bottom-color: #3fcf5f; } .rtile.i2 .inn { color: #3fcf5f; }
+  .rtile.i3 { border-bottom-color: var(--i3); } .rtile.i3 .inn { color: var(--i3); }
+  .rtile.i4 { border-bottom-color: var(--i4); } .rtile.i4 .inn { color: var(--i4); }
+  .rtile.i5 { border-bottom-color: var(--i5); } .rtile.i5 .inn { color: var(--i5); }
+  .rtile.i6 { border-bottom-color: var(--i6); } .rtile.i6 .inn { color: var(--i6); }
+  .rtile.bonus { border-bottom-color: var(--gold); outline: 3px solid var(--gold); outline-offset: -6px; }
+  .rtile.bonus .cap { background: var(--gold); color: #000; } .rtile.bonus .inn { color: #000; }
+  .rtile.bonus::before { content: "Tee ball"; position: absolute; top: 6px; left: 6px; z-index: 2; background: var(--gold); color: #000; font-family: "VT323", monospace; font-size: 18.5px; padding: 0 6px; border: 2px solid #000; text-transform: uppercase;}
+  .marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; background: var(--yellow); z-index: 3; }
+  .marker::before, .marker::after { content: ""; position: absolute; left: -8px; width: 20px; height: 8px; background: var(--yellow); border: 2px solid #000; }
+  .marker::before { top: 0; } .marker::after { bottom: 0; }
+  .rtile.win { animation: winflash .18s steps(2) 6; }
+  @keyframes winflash { 50% { border-color: var(--yellow); outline: 4px solid var(--yellow); } }
+  .reveal { min-height: 76px; }
+  .reveal .what { font-family: "VT323", monospace; font-size: 42.5px; color: var(--yellow); text-shadow: 3px 3px 0 var(--red); text-transform: uppercase;}
+  .reveal .sub { color: var(--muted); }
+
+  #tip { position: fixed; z-index: 40; pointer-events: none; display: none; background: #000; color: #fff; border: 2px solid var(--yellow); padding: 8px 10px; font-size: 18px; min-width: 220px; max-width: 280px; }
+  #tip .h { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  #tip .h img { width: 40px; height: 40px; background: var(--gl); border: 2px solid #fff; }
+  #tip .h b { font-family: "VT323", monospace; font-weight: 400; font-size: 20px; color: var(--yellow); display: block; text-transform: uppercase;}
+  #tip .g { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 1px 8px; }
+  #tip .g span:nth-child(even) { text-align: right; color: var(--yellow); }
+  #tip .g2 { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; } #tip .g2 span:nth-child(odd) { color: var(--yellow); }
+  .tier { font-style: normal; color: var(--yellow-d); } .pcard .tier { color: #136b1e; } [data-tiptext] { cursor: help; }
+  .gsw { display: inline-block; width: 26px; height: 26px; border: 2px solid #000; outline: 2px solid var(--yellow-d); vertical-align: middle; }
+  #tip .pt { color: var(--muted); margin-top: 6px; font-size: 16px; }
+
+  .modal { position: fixed; inset: 0; background-image: repeating-conic-gradient(rgba(0,0,0,.75) 0 25%, rgba(0,0,0,.4) 0 50%); background-size: 4px 4px; display: none; place-items: center; z-index: 20; padding: 16px; }
+  .modal.on { display: grid; }
+  .modal .inner { width: min(580px, 100%); max-height: 92vh; overflow: auto; }
+  .drop { border: 3px dashed var(--gl); padding: 28px; text-align: center; background: rgba(0,0,0,.3); }
+  .drop.hover { border-color: var(--yellow); }
+  .status { color: var(--muted); min-height: 1.4em; margin-top: 12px; } .status.err { color: var(--bad); }
+  input[type=file] { display: none; }
+  label.btn { display: inline-block; }
+  .row-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .small { font-size: 18px; color: var(--muted); }
+  .opt { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .ghost-drag { position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -50%); background: var(--gl); border: 3px solid var(--yellow); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+  /* chunky display face for titles and big numbers; VT323 for everything else */
+  h1, h2, .btn.big, .reveal .what, .score .big, .tile b, .eb b, .gstat .gl b, .pcard .ovr, .gscore b { font-family: "Press Start 2P", monospace; text-transform: none; letter-spacing: 0; }
+  .bar h1 { font-size: 18px; } h2 { font-size: 20px; line-height: 1.3; } .btn.big { font-size: 18px; padding: 14px 22px; }
+  .reveal .what { font-size: 20px; line-height: 1.4; } .score .big { font-size: 40px; } .tile b { font-size: 18px; margin-bottom: 3px; }
+  .eb b { font-size: 18px; margin: 3px 0 4px; } .gstat .gl b { font-size: 18px; } .pcard .ovr { font-size: 18px; padding: 4px 5px; } .gscore b { font-size: 15px; line-height: 1.6; }
+  .gscore b i { font-family: "VT323"; font-size: 18px; }
+  .combos { margin-top: 8px; text-align: left; }
+  .combo { border: 2px solid rgba(0,0,0,.2); padding: 4px 6px; margin-top: 4px; font-size: 18px; }
+  .combo.on { border-color: #1f6a1f; background: rgba(107,224,107,.3); }
+  .combo.on.neg { border-color: #a8261a; background: rgba(255,106,90,.3); }
+  .combo.on em { color: #1f6a1f; font-style: normal; } .combo.on.neg em { color: #a8261a; }
+  .combo .ct { opacity: .8; }
+  .combo .cd .up { color: #1f6a1f; } .combo .cd .down { color: #a8261a; }
+  .warnTxt { color: var(--bad); }
+  .bslots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
+  .bslots .bs { min-height: 26px; border: 2px dashed rgba(255,255,255,.25); font-size: 16px; line-height: 1.1; padding: 2px 4px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .bslots .bs.on { border: 2px solid var(--yellow-d); background: rgba(255,210,58,.15); }
+  .bslots .bs.dup { border-color: var(--bad); background: rgba(255,106,90,.3); }
+  .bslots.big .bs { min-height: 44px; border-color: rgba(0,0,0,.25); }
+  .bslots.big .bs.on { border-color: var(--yellow-d); background: rgba(255,210,58,.3); }
+  .ccompact { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; font-size: 16px; }
+  .ccompact span { border: 2px solid rgba(0,0,0,.25); padding: 1px 6px; }
+
+  /* rarity shine: a light sweep across the card, faster and brighter the rarer it is */
+  .joker.rare::after, .joker.epic::after, .joker.legendary::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,var(--sh-a)) 48%, rgba(255,255,255,calc(var(--sh-a) * 1.6)) 50%, rgba(255,255,255,var(--sh-a)) 52%, transparent 65%) no-repeat;
+    background-size: 250% 100%; animation: sheen var(--sh-t) ease-in-out infinite; mix-blend-mode: screen; }
+  .joker.rare { --sh-a: .22; --sh-t: 6s; }
+  .joker.epic { --sh-a: .32; --sh-t: 4s; box-shadow: 0 0 10px rgba(155,61,255,.55); }
+  .joker.legendary { --sh-a: .45; --sh-t: 2.6s; animation: legglow 2.6s ease-in-out infinite; }
+  .joker.legendary::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background-image: radial-gradient(circle, #fff 0 1.5px, transparent 2px), radial-gradient(circle, #fff6c2 0 1px, transparent 1.5px), radial-gradient(circle, #fff 0 1px, transparent 1.5px);
+    background-size: 100% 100%; background-position: 18% 22%, 78% 60%, 40% 84%; animation: sparkle 2.6s steps(1) infinite; }
+  @keyframes sheen { 0% { background-position: 150% 0; } 60%, 100% { background-position: -50% 0; } }
+  @keyframes legglow { 0%, 100% { box-shadow: 0 0 8px rgba(255,184,0,.5); } 50% { box-shadow: 0 0 20px rgba(255,214,90,.95); } }
+  @keyframes sparkle { 0% { opacity: 1; background-position: 18% 22%, 78% 60%, 40% 84%; } 33% { opacity: .9; background-position: 70% 14%, 24% 52%, 82% 88%; } 66% { opacity: 1; background-position: 46% 36%, 86% 30%, 16% 70%; } }
+  @media (prefers-reduced-motion: reduce) { .joker::after, .joker::before, .joker.legendary { animation: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+<aside class="gside" id="gLeft"><div class="gh">Cards</div><div id="gCards"></div></aside>
+<aside class="gside" id="gRight">
+  <div class="gsec" id="gGame"></div>
+  <div class="gsec"><div class="gh">Power-ups</div><div class="pus" id="hudPu"></div></div>
+  <div class="gsec" id="gBat"></div>
+  <div class="gsec"><div class="gh">Options</div><label class="vol">Volume <input type="range" id="hudVol" min="0" max="100"></label><button class="iconbtn" id="fsBtn">Fullscreen</button></div>
+</aside>
+
+<div id="app">
+  <div class="bar">
+    <h1>Backyard Rogueball</h1>
+    <div class="tile"><b class="num" id="tGame">-</b><small>game</small></div>
+    <div class="tile"><b class="num" id="tWins">0</b><small>wins</small></div>
+    <div class="tile money"><b class="num" id="tMoney">$0</b><small id="tInt">bank</small></div>
+    <div class="tile"><b class="num" id="tBest">0</b><small>best run</small></div>
+    <div class="puBar" id="puBar"></div>
+    <label class="vol">Volume <input type="range" id="barVol" min="0" max="100"></label>
+    <button class="iconbtn" id="setBtn">Sound settings</button>
+  </div>
+  <main><div class="wrap">
+
+    <section class="screen" id="scr-import">
+      <h2>Load your game</h2>
+      <p class="lede">Pick your Backyard Baseball 2001 folder. The patch is applied in this browser and everything stays on this computer.</p>
+      <div class="drop" id="drop">
+        <p>Drop the game folder here, or choose it.</p>
+        <div class="row-actions" style="justify-content:center">
+          <label class="btn" for="pickDir">Choose folder</label>
+          <label class="btn ghost" for="pickFiles">Choose files</label>
+        </div>
+        <input type="file" id="pickDir" webkitdirectory directory multiple>
+        <input type="file" id="pickFiles" multiple>
+      </div>
+      <p class="status" id="impStatus"></p>
+    </section>
+
+    <section class="screen" id="scr-title">
+      <div class="row-actions">
+        <button class="btn big" id="newRunBtn">New run</button>
+        <button class="btn big ghost" id="contBtn" hidden>Continue run</button>
+      </div>
+      <p class="status" id="titleStatus"></p>
+      <p class="small">Stored game files: <span id="storedInfo">none</span>. <button class="iconbtn" id="reimportBtn">Load game files again</button></p>
+    </section>
+
+    <section class="screen" id="scr-name">
+      <h2>Name your team</h2>
+      <div class="teamname" style="margin-top:18px" id="nameSelects"></div>
+      <div class="row-actions"><button class="btn big" id="nameGo">Start the draft</button></div>
+    </section>
+
+    <section class="screen" id="scr-draft">
+      <h2 id="draftTitle">Draft</h2>
+      <p class="lede" id="draftLede"></p>
+      <div class="draftgrid">
+        <div class="cards" id="draftCards"></div>
+        <div class="board"><h3 id="draftTeamName">Your team</h3><div class="diamond" id="draftDiamond"></div><table class="mini" id="draftList"></table></div>
+      </div>
+    </section>
+
+    <section class="screen" id="scr-reel">
+      <h2 id="reelTitle">Next game</h2>
+      <div class="reel-wrap"><div class="marker"></div><div class="reel" id="reel"></div></div>
+      <div class="reveal" id="reveal"></div>
+      <div class="row-actions" style="justify-content:center"><button class="btn ghost" id="reelReroll" hidden></button><button class="btn big" id="reelGo" hidden>To the clubhouse</button></div>
+    </section>
+
+    <section class="screen" id="scr-hub">
+      <div class="hub">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="board">
+            <div class="teamname" id="hubName"></div>
+            <div class="builder">
+              <div>
+                <div class="diamond" id="diamond"></div>
+                <h3 class="sub">Bench <span class="small" id="benchCount"></span></h3>
+                <div class="bench" id="bench"></div>
+              </div>
+              <div><h3 class="sub" style="margin-top:0">Batting order</h3><div class="order" id="order"></div></div>
+            </div>
+            <div class="warn" id="lineupWarn"></div>
+          </div>
+          <div class="board">
+            <h3>Shop</h3>
+            <div class="row-actions" style="margin:0 0 12px"><button class="btn ghost" id="shopRefresh"></button></div>
+            <div class="shopgrid" id="shopCards"></div>
+            <h3 class="sub">Your cards <span class="small" id="cardCount"></span></h3>
+            <div class="jgrid" id="myCards"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="board" id="econBox"></div>
+          <div class="board" id="oppBox"></div>
+          <div class="board">
+            <h3>Trade block</h3>
+            <div class="tb" id="tradeBlock"></div>
+            <div class="row-actions"><button class="btn ghost" id="rerollBtn"></button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="scr-result">
+      <h2 id="resTitle"></h2>
+      <div class="score" id="resScore"></div>
+      <div class="hub">
+        <div class="board"><h3>Box score</h3><table class="roster" id="boxTbl"></table></div>
+        <div class="board"><h3>Payout</h3><div class="pay" id="payBox"></div>
+          <div class="row-actions"><button class="btn big" id="resNext"></button></div></div>
+      </div>
+    </section>
+
+    <section class="screen" id="scr-augment">
+      <h2>Pick a boost</h2>
+      <div class="augs" id="augCards" style="margin-top:18px"></div>
+      <div class="row-actions"><button class="btn ghost" id="augReroll"></button><button class="btn ghost" id="augSkip">Skip and take $2</button></div>
+    </section>
+
+    <section class="screen" id="scr-over">
+      <h2 id="overTitle" class="gameover">Game over</h2>
+      <p class="overline" id="overLede"></p>
+      <div class="board"><h3>Player stats</h3><table class="roster" id="leadersTbl"></table></div>
+      <div class="row-actions"><button class="btn big" id="overNew">Start a new run</button></div>
+    </section>
+
+    <section class="screen" id="scr-wait"><h2>Warming up</h2><p class="lede">Starting the game engine.</p></section>
+  </div></main>
+</div>
+
+<div id="tip"></div>
+<div class="modal" id="modal"><div class="inner board" id="modalInner"></div></div>
+
+<script>
+(() => {
+/* ======================================================================
+   DATA: ratings from the decompiled game, market data from the BBOL mock draft tool
+   ====================================================================== */
+const PLAYERS = /*PLAYERS_JSON*/[];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const BY_ID = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+/* the game's run speed is 6 + speed/20 (+1 above 95), so these are the real tiers */
+const tierOf = s => 3 + Math.floor(clamp(s, 0, 125) / 20) + (s > 95 ? 1 : 0);
+const SPEED_TIERS = [[3, '0-19'], [4, '20-39'], [5, '40-59'], [6, '60-79'], [7, '80-95'], [8, '96-99'], [9, '100-119'], [10, '120+']];
+/* value: 45% market value, 55% offense (power first, then speed, then contact), re-ranked across the pool.
+   the market overrates gloves and arms in what is mostly a hitting game */
+(() => {
+  const N = PLAYERS.length;
+  const pct = k => { const sorted = PLAYERS.map(p => p[k] ?? 0).sort((a, b) => a - b); return v => { let lo = 0, hi = N; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] < v) lo = m + 1; else hi = m; } return lo / (N - 1); }; };
+  const mv = pct('mv'), sw = pct('swing'), sp = pct('speed'), hi = pct('hitting');
+  for (const p of PLAYERS) {
+    p.mr0 = p.mr; p.t = tierOf(p.speed);
+    p.score = 0.45 * mv(p.mv ?? 0) + 0.55 * (0.6 * sw(p.swing) + 0.28 * sp(p.speed) + 0.12 * hi(p.hitting));
+  }
+  // clones are the same player: the whole family takes the best score among them
+  const root = p => { let r = p; while (r.clone_of && BY_ID[r.clone_of] && r.clone_of !== r.id) r = BY_ID[r.clone_of]; return r.id; };
+  const fam = {};
+  for (const p of PLAYERS) { const k = root(p); fam[k] = Math.max(fam[k] ?? -1, p.score); }
+  for (const p of PLAYERS) p.score = fam[root(p)];
+  const sorted = PLAYERS.slice().sort((a, b) => b.score - a.score);
+  sorted.forEach((p, i) => {
+    const prev = sorted[i - 1];
+    if (prev && prev.score === p.score) { p.mr = prev.mr; p.val = prev.val; }
+    else { p.mr = i + 1; p.val = Math.round(99 - i * 87 / (N - 1)); }
+  });
+})();
+
+/* ======================================================================
+   TUNING
+   ====================================================================== */
+const CONFIG = {
+  draftChoices: 4,
+  draftBuckets: [[25, 55], [40, 75], [55, 95], [70, 115], [90, 135], [110, 160], [130, 185], [150, 215], [175, 263]],
+  startMoney: 10,
+  maxBoosts: 5,
+  econ: { winByInnings: { 2: 6, 3: 5, 4: 4 }, teeBonus: 1, perRun: 1, interestPer: 5, interestCap: 5, rivalryBonus: 4 },
+  mercy: 12,
+  innings: [2, 3, 4],
+  fields: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  bonusSlotWeight: 1,
+  rivalryEvery: 5,
+  tradeBlockSize: 4,
+  benchSize: 5,
+  rerollBase: 1,                       // trade block refresh
+  fieldReroll: { base: 3, step: 2 },   // reel spin-again cost, resets each round
+  augReroll: { base: 2, step: 1 },     // augment reroll cost, resets each round
+  cardSlots: 5,
+  shopReroll: { base: 3, step: 2 },    // shop refresh cost, resets each round
+  shopSlots: 5,
+  shopMix: { card: 55, aug: 37, pu: 8 },   // odds per shop slot
+  augPrice: 4,
+  cardPrice: { common: 6, rare: 10, epic: 14, legendary: 20 },
+  cardOdds: { common: 55, rare: 28, epic: 13, legendary: 4 },
+  cardSellRate: 0.5,
+  sellRate: 0.5,
+  statMax: 125,
+  powerups: [
+    { k: 'alum', name: 'Aluminum Power', price: 9 },
+    { k: 'cbunt', name: 'Crazy Bunt', price: 7 },
+    { k: 'under', name: 'Under Grounder', price: 6 },
+    { k: 'line', name: "Screamin' Line Drive", price: 5 },
+    { k: 'juice', name: 'More Juice', price: 2 },
+  ],
+  difficulty: g => g <= 3 ? 1 : g <= 8 ? 3 : 2,
+  oppCenterRank: g => Math.max(14, 190 - 13 * (g - 1)),
+  oppBoost: g => Math.max(0, (g - 15) * 2),
+};
+
+/* augments: d = deltas, set = exact value, min = at least; target 'pick' asks for a player.
+   slot buffs follow whoever bats there each game. */
+const AUGMENTS = [
+  { id: 'fences', name: 'Swing For The Fences', text: '+5 power, -5 contact to 1 player.', target: 'pick', d: { swing: 5, hitting: -5 } },
+  { id: 'cleanup', name: 'Cleanup', text: '+5 power to whoever bats 9th.', slot: [8], d: { swing: 5 }, retired: true },
+  { id: 'leadoff', name: 'Leadoff', text: '+5 speed to whoever bats 1st.', slot: [0], d: { speed: 5 }, retired: true },
+  { id: 'zoomies', name: 'Zoomies', text: '+3 speed to 1 player.', target: 'pick', d: { speed: 3 } },
+  { id: 'precision', name: 'Precision', text: '+5 contact to 1 player.', target: 'pick', d: { hitting: 5 } },
+  { id: 'eyeball', name: 'Eye For The Ball', text: '+25 vision to 1 player.', target: 'pick', d: { eye: 25 } },
+  { id: 'juiced', name: 'Juiced', text: '+20 stamina to 1 player.', target: 'pick', d: { stamina: 20 } },
+  { id: 'slugger', name: 'Slugger', text: '+5 power, -10 speed to 1 player.', target: 'pick', d: { swing: 5, speed: -10 } },
+  { id: 'cannon', name: 'Cannon', text: '+15 arm strength to 1 player.', target: 'pick', d: { arm: 15 } },
+  { id: 'spam', name: 'Spam Clicker', text: '+5 speed, -5 stamina to 1 player.', target: 'pick', d: { speed: 5, stamina: -5 } },
+  { id: 'sturdy', name: 'Sturdy', text: '+20 coordination to 1 player.', target: 'pick', d: { coordination: 20 } },
+  { id: 'contact', name: 'Hit For Contact', text: '-2 power, +12 contact to 1 player.', target: 'pick', d: { swing: -2, hitting: 12 } },
+  { id: 'econ', name: 'Econ', text: '+$5 now.', money: 5 },
+  { id: 'reliable', name: "Ol' Reliable", text: '100 slowball for 1 player.', target: 'pick', min: { slowball: 100 } },
+  { id: 'sld', name: "Screamin' Line Drive", text: "+1 Screamin' Line Drive power-up.", pu: { line: 1 }, retired: true },
+  { id: 'freejuice', name: 'Free Juice', text: '+1 More Juice power-up.', pu: { juice: 1 } },
+  { id: 'screamer', name: 'Screamer', text: "+1 Screamin' Line Drive power-up.", pu: { line: 1 } },
+  { id: 'snaphook', name: 'Snap Hook', text: 'Set 1 player\'s left and right hook to 99.', target: 'pick', set: { rhook: 99, lhook: 99 } },
+  { id: 'finesse', name: 'Finesse', text: '+2 contact, +10 coordination to 1 player.', target: 'pick', d: { hitting: 2, coordination: 10 } },
+  { id: 'splash', name: 'Power Splash', text: '+2 power to 1 player.', target: 'pick', d: { swing: 2 } },
+  { id: 'intangibles', name: 'Intangibles', text: '+10 coordination, +10 vision, +10 stamina to 1 player.', target: 'pick', d: { coordination: 10, eye: 10, stamina: 10 } },
+  { id: 'smooth', name: 'Smooth Swing', text: '+1 power, +2 contact to 1 player.', target: 'pick', d: { swing: 1, hitting: 2 } },
+  { id: 'behemoth', name: 'Behemoth', text: 'Set 1 player to height 5.', target: 'pick', set: { height: 5 } },
+  { id: 'dh', name: 'Designated Hitter', text: '+5 power, -5 coordination, -5 arm to 1 player.', target: 'pick', d: { swing: 5, coordination: -5, arm: -5 } },
+  { id: 'growth', name: 'Growth Spurt', text: '+1 height to 1 player.', target: 'pick', d: { height: 1 } },
+  { id: 'standy', name: 'Standy', text: 'Set 1 player to 1 speed and 110 power.', target: 'pick', set: { speed: 1, swing: 110 } },
+  { id: 'rbidemon', name: 'RBI Demon', text: '+1 power, +2 contact to 1 player when runners are on base.', target: 'pick', cond: { c: 'runners', d: { swing: 1, hitting: 2 } } },
+  { id: 'impatient', name: 'Impatient', text: '+2 power, +4 contact to 1 player on the first pitch.', target: 'pick', cond: { c: 'first', d: { swing: 2, hitting: 4 } } },
+  { id: 'hotinning', name: 'Hot Start', text: '+2 power, +3 contact to 1 player in the first inning.', target: 'pick', cond: { c: 'inning1', d: { swing: 2, hitting: 3 } } },
+  { id: 'grandslammer', name: 'Grand Slammer', text: '+2 power to 1 player when the bases are loaded.', target: 'pick', cond: { c: 'loaded', d: { swing: 2 } } },
+  { id: 'headstart', name: 'Head Start', text: '1 player starts every at bat with a 2-0 count.', target: 'pick', headstart: true },
+  { id: 'jogger', name: 'Jogger', text: "Set 1 player's speed to 50.", target: 'pick', set: { speed: 50 } },
+  { id: 'shrinkray', name: 'Shrink Ray', text: 'Set 1 player to height 1, +10 speed.', target: 'pick', set: { height: 1 }, d: { speed: 10 } },
+  { id: 'gaphitter', name: 'Gap Hitter', text: '+10 contact to 1 player when swinging line drive.', target: 'pick', cond: { c: 'liner', d: { hitting: 10 } } },
+  { id: 'momentum', name: 'Momentum Batter', text: 'Experimental. 1 player gets +5 power, +5 contact after every hit and -5 power, -5 contact after every out. Resets each game.', target: 'pick', cond: { c: 'momentum', d: { swing: 5, hitting: 5 } } },
+  { id: 'goldenglove', name: 'Golden Glove', text: '+10 coordination, +10 arm strength to 1 player.', target: 'pick', d: { coordination: 10, arm: 10 } },
+  { id: 'underground', name: 'Lords of the Underground', text: '+1 Under Grounder power-up.', pu: { under: 1 } },
+  { id: 'toughout', name: 'Tough Out', text: '+10 contact to 1 player with 2 strikes.', target: 'pick', cond: { c: 'twostrikes', d: { hitting: 10 } } },
+  { id: 'clutch', name: 'Clutch', text: '+5 power, +5 contact to 1 player on a full count.', target: 'pick', cond: { c: 'fullcount', d: { swing: 5, hitting: 5 } } },
+  { id: 'sacrifice', name: 'Sacrifice', text: '+$3 for every out 1 player makes (paid after a win).', target: 'pick', sacrifice: 3 },
+  { id: 'powergrounder', name: 'Power Grounder', text: '+10 power to 1 player when swinging grounder.', target: 'pick', cond: { c: 'grounder', d: { swing: 10 } } },
+];
+/* situational boosts: codes the game checks at the moment of contact */
+const COND = {
+  runners: { code: 1, label: 'Runners on' }, loaded: { code: 2, label: 'Bases loaded' }, first: { code: 3, label: 'First pitch' },
+  inning1: { code: 4, label: '1st inning' }, liner: { code: 5, label: 'Line drive swing' }, grounder: { code: 6, label: 'Grounder swing' },
+  foul: { code: 7, label: 'Per foul this at bat' },
+  momentum: { code: 8, label: 'Hits minus outs this game' },
+  twostrikes: { code: 9, label: '2 strikes' }, fullcount: { code: 10, label: 'Full count' },
+  discipline: { code: 11, label: 'Balls minus strikes' }, doubles: { code: 12, label: 'Per team double this game' },
+  triples: { code: 13, label: 'Per team triple this game' },
+};
+
+/* cards: who = team (the nine in the lineup) | opp | of | slots | minspeed | pick */
+const CARDS = [
+  { id: 'clumsy', name: 'Clumsy', rarity: 'common', text: 'Opposing players have -5 coordination.', who: 'opp', d: { coordination: -5 }, retired: true },
+  { id: 'uncoord-c', name: 'Uncoordinated', rarity: 'common', text: 'Opposing players have -5 coordination.', who: 'opp', d: { coordination: -5 } },
+  { id: 'uncoord-r', name: 'Uncoordinated', rarity: 'rare', text: 'Opposing players have -7 coordination.', who: 'opp', d: { coordination: -7 } },
+  { id: 'uncoord-e', name: 'Uncoordinated', rarity: 'epic', text: 'Opposing players have -10 coordination.', who: 'opp', d: { coordination: -10 } },
+  { id: 'uncoord-l', name: 'Uncoordinated', rarity: 'legendary', text: 'Opposing players have -15 coordination.', who: 'opp', d: { coordination: -15 } },
+  { id: 'ghostcal', name: 'Ghost Cal', rarity: 'common', text: '+10 team stamina.', who: 'team', d: { stamina: 10 } },
+  { id: 'bp-c', name: 'Batting Practice', rarity: 'common', text: '+3 team contact.', who: 'team', d: { hitting: 3 } },
+  { id: 'bp-r', name: 'Batting Practice', rarity: 'rare', text: '+5 team contact.', who: 'team', d: { hitting: 5 } },
+  { id: 'bp-e', name: 'Batting Practice', rarity: 'epic', text: '+7 team contact.', who: 'team', d: { hitting: 7 } },
+  { id: 'bp-l', name: 'Batting Practice', rarity: 'legendary', text: '+10 team contact.', who: 'team', d: { hitting: 10 } },
+  { id: 'pu-c', name: 'Power Up', rarity: 'common', text: '+1 team power.', who: 'team', d: { swing: 1 } },
+  { id: 'pu-r', name: 'Power Up', rarity: 'rare', text: '+2 team power.', who: 'team', d: { swing: 2 } },
+  { id: 'pu-e', name: 'Power Up', rarity: 'epic', text: '+3 team power.', who: 'team', d: { swing: 3 } },
+  { id: 'pu-l', name: 'Power Up', rarity: 'legendary', text: '+5 team power.', who: 'team', d: { swing: 5 } },
+  { id: 'cannons-c', name: 'Cannons', rarity: 'common', text: '+5 team arm strength.', who: 'team', d: { arm: 5 } },
+  { id: 'cannons-r', name: 'Cannons', rarity: 'rare', text: '+10 team arm strength.', who: 'team', d: { arm: 10 } },
+  { id: 'cannons-e', name: 'Cannons', rarity: 'epic', text: '+15 team arm strength.', who: 'team', d: { arm: 15 } },
+  { id: 'nodrops', name: 'No Drops', rarity: 'common', text: 'Outfielders have 100 coordination.', who: 'of', min: { coordination: 100 } },
+  { id: 'splash-c', name: 'Stat Splash', rarity: 'common', text: '+1 team contact, arm strength, coordination and stamina.', who: 'team', d: { hitting: 1, arm: 1, coordination: 1, stamina: 1 } },
+  { id: 'splash-r', name: 'Stat Splash', rarity: 'rare', text: '+1 team contact, arm strength, coordination and stamina.', who: 'team', d: { hitting: 1, arm: 1, coordination: 1, stamina: 1 } },
+  { id: 'vision', name: '20/20 Vision', rarity: 'common', text: 'Teamwide 100 vision.', who: 'team', min: { eye: 100 } },
+  { id: 'freerolls', name: 'Freerolls', rarity: 'common', text: '1 free shop refresh each round.', freeShop: 1 },
+  { id: 'minspeed', name: 'Minimum Speed Boost', rarity: 'common', text: 'All minimum speed players get +1 speed tier.', who: 'minspeed', d: { speed: 20 } },
+  { id: 'roided', name: 'Roided', rarity: 'legendary', text: '+20 power to 1 player.', who: 'pick', d: { swing: 20 }, retired: true },
+  { id: 'wheels', name: 'Wheels', rarity: 'epic', text: '1 player set to 90 speed.', who: 'pick', min: { speed: 90 }, retired: true },
+  { id: 'hotstart', name: 'Hot Start', rarity: 'rare', text: '+2 power, +3 contact to the first 3 batters.', who: 'slots', slots: [0, 1, 2], d: { swing: 2, hitting: 3 } },
+  { id: 'fundamentals', name: 'Fundamentals', rarity: 'common', text: '+10 team coordination, +5 team arm.', who: 'team', d: { coordination: 10, arm: 5 } },
+  { id: 'heart-c', name: 'Heart Of The Order', rarity: 'common', text: '+1 power, +2 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 1, hitting: 2 } },
+  { id: 'heart-r', name: 'Heart Of The Order', rarity: 'rare', text: '+2 power, +3 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 2, hitting: 3 } },
+  { id: 'heart-e', name: 'Heart Of The Order', rarity: 'epic', text: '+3 power, +5 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 3, hitting: 5 } },
+  { id: 'heart-l', name: 'Heart Of The Order', rarity: 'legendary', text: '+5 power, +7 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 5, hitting: 7 } },
+  { id: 'cleanup-c', name: 'Cleanup', rarity: 'common', text: '+5 power to whoever bats 9th.', who: 'slots', slots: [8], d: { swing: 5 } },
+  { id: 'leadoff-c', name: 'Leadoff', rarity: 'common', text: '+5 speed to whoever bats 1st.', who: 'slots', slots: [0], d: { speed: 5 } },
+  { id: 'orig30', name: 'Original 30', rarity: 'rare', text: '+2 team power, +2 team contact for each backyard kid in the starting lineup.', who: 'team', perKid: true, d: { swing: 2, hitting: 2 } },
+  { id: 'dblmerchant', name: 'Double Merchant', rarity: 'common', text: '+1 team contact, +1 team speed per double this game.', who: 'team', cond: { c: 'doubles', d: { hitting: 1, speed: 1 } } },
+  { id: 'tripthreat', name: 'Triple Threat', rarity: 'epic', text: '+3 team power, contact and speed per triple this game.', who: 'team', cond: { c: 'triples', d: { swing: 3, hitting: 3, speed: 3 } } },
+  { id: 'cheeser', name: 'Powerup Cheeser', rarity: 'rare', text: 'Gain 1 random power-up before each game.', freePu: 1 },
+  { id: 'hotcorner', name: 'Hot Corner', rarity: 'common', text: 'Your 3B has 100 arm strength and 100 coordination.', who: 'pos', pos: 3, min: { arm: 100, coordination: 100 } },
+  { id: 'discipline-c', name: 'Plate Discipline', rarity: 'common', text: '+1 power, +1 contact per ball, -1 per called or swinging strike. Fouls don\'t count.', who: 'team', cond: { c: 'discipline', d: { swing: 1, hitting: 1 } } },
+  { id: 'discipline-r', name: 'Plate Discipline', rarity: 'rare', text: '+2 power, +2 contact per ball, -2 per called or swinging strike. Fouls don\'t count.', who: 'team', cond: { c: 'discipline', d: { swing: 2, hitting: 2 } } },
+  { id: 'batemin-c', name: 'Bat Em In', rarity: 'common', text: '+1 power, +1 contact with runners on base.', who: 'team', cond: { c: 'runners', d: { swing: 1, hitting: 1 } } },
+  { id: 'batemin-r', name: 'Bat Em In', rarity: 'rare', text: '+2 power, +2 contact with runners on base.', who: 'team', cond: { c: 'runners', d: { swing: 2, hitting: 2 } } },
+  { id: 'batemin-e', name: 'Bat Em In', rarity: 'epic', text: '+3 power, +3 contact with runners on base.', who: 'team', cond: { c: 'runners', d: { swing: 3, hitting: 3 } } },
+  { id: 'grandslammin', name: 'Grand Slammin', rarity: 'epic', text: '+5 power when the bases are loaded.', who: 'team', cond: { c: 'loaded', d: { swing: 5 } } },
+  { id: 'foulstack', name: 'Foul Stacking', rarity: 'rare', text: '+1 contact, +1 power for each foul ball in an at bat. Resets every at bat.', who: 'team', cond: { c: 'foul', d: { swing: 1, hitting: 1 } } },
+];
+const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
+const RAR_LABEL = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+const RAR_RANK = { common: 0, rare: 1, epic: 2, legendary: 3 };
+const AUG = Object.fromEntries(AUGMENTS.map(a => [a.id, a]));
+
+/* team names (game enums) */
+const ADJ = { 1: 'Blue', 2: 'Crazy', 3: 'Green', 4: 'Humongous', 5: 'Junior', 6: 'Little', 7: 'Mighty', 8: 'Red', 9: 'Super-Duper', 10: 'White',
+  22: 'Anaheim', 23: 'Arizona', 24: 'Atlanta', 25: 'Baltimore', 26: 'Boston', 27: 'Chicago', 29: 'Cincinnati', 30: 'Cleveland', 31: 'Colorado', 32: 'Detroit',
+  33: 'Florida', 34: 'Houston', 35: 'Kansas City', 36: 'Los Angeles', 37: 'Milwaukee', 38: 'Minnesota', 39: 'Montreal', 40: 'New York', 42: 'Oakland',
+  43: 'Philadelphia', 44: 'Pittsburgh', 45: 'San Diego', 46: 'San Francisco', 47: 'Seattle', 48: 'St. Louis', 49: 'Tampa Bay', 50: 'Texas', 51: 'Toronto' };
+/* uniform colors, swatches taken from the game's palettes: the 9 backyard colors (1-9) and the pro teams' colors (101-125) */
+const TEAM_COLOR = { 1: ['Red', '#cd0a12'], 2: ['Blue', '#1a32cf'], 3: ['Yellow', '#d8d11b'], 4: ['Green', '#1ca413'], 5: ['Purple', '#9415a7'],
+  6: ['Orange', '#ca6d00'], 7: ['Pink', '#e47bcd'], 8: ['White', '#dbdbdb'], 9: ['Black', '#444444'] };
+const PRO_COLOR = { 101: ['Ocean Blue', '#195ca4'], 102: ['Scarlet', '#cc0029'], 103: ['Cardinal Red', '#d20044'], 104: ['Steel Blue', '#264389'],
+  105: ['Navy', '#10376a'], 106: ['Sea Green', '#007b77'], 107: ['Forest Green', '#00423a'], 108: ['Gold', '#d6a31c'], 109: ['Ruby', '#bf003e'],
+  110: ['Classic Red', '#bf2533'], 111: ['Burnt Orange', '#c9692a'], 112: ['Midnight', '#1b1e55'], 113: ['Slate Blue', '#4f6498'],
+  114: ['Royal Blue', '#304a9d'], 115: ['Cream', '#e8e2d3'], 116: ['Deep Navy', '#0f1d44'], 117: ['Cobalt', '#203d7e'], 118: ['Fire Red', '#c22734'],
+  119: ['Teal', '#008e9d'], 120: ['Brick Red', '#962722'], 121: ['Deep Purple', '#301969'], 122: ['Indigo', '#3c1d77'], 123: ['Plum', '#5a005c'],
+  124: ['Sand', '#e3e0d3'], 125: ['Silver', '#ababab'] };
+const ALL_COLOR = { ...TEAM_COLOR, ...PRO_COLOR };
+// screens that only know the 9 backyard colors get the closest one
+function basicOf(c) {
+  if (!PRO_COLOR[c]) return c;
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), a = rgb(PRO_COLOR[c][1]);
+  let best = 9, bd = 1e9;
+  for (const [k, [, h]] of Object.entries(TEAM_COLOR)) { const b = rgb(h), d = a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0); if (d < bd) { bd = d; best = +k; } }
+  return best;
+}
+const NOUN = { 101: 'Bombers', 102: 'Fishes', 103: 'Hornets', 104: 'Melonheads', 105: 'Monsters', 106: 'Wombats',
+  122: 'Angels', 123: 'Diamondbacks', 124: 'Braves', 125: 'Orioles', 126: 'Red Sox', 127: 'Cubs', 128: 'White Sox', 129: 'Reds', 130: 'Indians', 131: 'Rockies',
+  132: 'Tigers', 133: 'Marlins', 134: 'Astros', 135: 'Royals', 136: 'Dodgers', 137: 'Brewers', 138: 'Twins', 139: 'Expos', 140: 'Yankees', 141: 'Mets',
+  142: 'Athletics', 143: 'Phillies', 144: 'Pirates', 145: 'Padres', 146: 'Giants', 147: 'Mariners', 148: 'Cardinals', 149: 'Devil Rays', 150: 'Rangers', 151: 'Blue Jays' };
+
+/* ======================================================================
+   RATINGS + LEAGUE POSITION RULES
+   ====================================================================== */
+const COL = { stamina: 1, coordination: 3, speed: 4, arm: 5, throwing: 6, swing: 7, hitting: 8, eye: 9,
+  heat: 14, slowball: 15, lhook: 16, rhook: 17, corkscrew: 18, zigzag: 19, freeze: 20, fireball: 21, spitball: 22, crazy: 23, slomo: 24, elevator: 25, height: 27 };
+const PITCHES = ['heat', 'slowball', 'lhook', 'rhook', 'corkscrew', 'zigzag', 'freeze', 'fireball', 'spitball', 'crazy', 'slomo', 'elevator'];
+const CORE_PITCHES = ['heat', 'slowball', 'lhook', 'rhook'];
+const PITCH_LABEL = { heat: 'Heat', slowball: 'Slowball', lhook: 'L hook', rhook: 'R hook', corkscrew: 'Corkscrew', zigzag: 'Zig zag', freeze: 'Freeze', fireball: 'Fireball', spitball: 'Spitball', crazy: 'Crazy', slomo: 'Slo-mo', elevator: 'Elevator' };
+const STAT_LABEL = { swing: 'Power', hitting: 'Contact', eye: 'Vision', speed: 'Speed', arm: 'Arm', throwing: 'Throw acc', coordination: 'Coordination', stamina: 'Stamina', height: 'Height', ...PITCH_LABEL };
+const POS = ['LF', 'CF', 'RF', '3B', '2B', '1B', 'SS', 'C', 'P'];
+const SLOT_XY = { LF: [15, 28], CF: [50, 16], RF: [85, 28], '3B': [16, 61], SS: [33, 42], '2B': [67, 42], '1B': [84, 61], P: [50, 58], C: [50, 83] };
+const tr = Math.trunc;
+const clampStat = (k, v) => k === 'height' ? clamp(v, 1, 5) : clamp(v, 0, CONFIG.statMax);
+
+const card = {
+  bat: p => clamp(tr((p.hitting > p.swing ? p.hitting + tr(p.swing * 2 / 5) - 20 : p.swing + tr(p.hitting * 2 / 5) - 20) / 10), 1, 10),
+  run: p => clamp(tr((p.speed >= 100 ? 99 : p.speed) / 10) + 1, 1, 10),
+  pitch: p => { const a = tr((p.heat + p.slowball + p.lhook + p.rhook) / 4); const x = tr((3 * a + p.stamina) / 4); return clamp(tr(tr((x - 20) * 100 / 50) * 10 / 100), 1, 10); },
+  field: p => { const v = tr((p.coordination * 3 + p.eye + p.arm + p.throwing) / 6); return clamp(tr(tr((v - 20) * 100 / 60) * 10 / 100), 1, 10); },
+};
+const value = p => p.val;
+const price = p => Math.max(2, Math.round(26 * Math.exp(-(p.mr - 1) / 60)));
+const nonHeatGood = p => PITCHES.filter(k => k !== 'heat' && p[k] >= 65).length;
+const ELIG = {
+  C: p => p.arm >= 87, '1B': p => p.height >= 3, SS: p => p.arm >= 65 && p.t >= 5,
+  LF: p => p.t >= 6, CF: p => p.t >= 6, RF: p => p.t >= 6, '2B': p => true, '3B': p => true,
+  P: p => !!(p.pc || p.wh || nonHeatGood(p) >= 2),
+};
+function posWarn(p, pos) {
+  if (pos === 'C' && p.arm < 90) return p.arm >= 87 ? `low-end catcher (${p.arm} arm)` : `only a ${p.arm} arm behind the plate`;
+  if (pos === '1B' && p.height < 3) return `height ${p.height} at first`;
+  if (pos === 'SS' && !ELIG.SS(p)) return p.arm < 65 ? `${p.arm} arm at short` : `speed tier ${p.t} at short`;
+  if (['LF', 'CF', 'RF'].includes(pos) && p.t < 6) return `speed tier ${p.t} in the outfield`;
+  if (pos === 'P' && !ELIG.P(p)) return 'not a real pitcher';
+  return '';
+}
+function tagsHTML(p) {
+  const t = [];
+  if (p.arm >= 90) t.push('<span class="tag c">C</span>'); else if (p.arm >= 87) t.push('<span class="tag c">C low end</span>');
+  if (ELIG['1B'](p)) t.push('<span class="tag b1">1B</span>');
+  if (ELIG.SS(p)) t.push('<span class="tag ss">SS</span>');
+  if (p.t >= 6) t.push('<span class="tag of">OF</span>');
+  if (p.wh) t.push('<span class="tag p">Workhorse</span>'); else if (ELIG.P(p)) t.push('<span class="tag p">P</span>');
+  return t.join('');
+}
+const FIT = {
+  P: p => (ELIG.P(p) ? 100 : 0) + (p.heat + p.slowball + p.lhook + p.rhook) / 4 * 0.6 + p.stamina * 0.4,
+  C: p => (ELIG.C(p) ? 100 : 0) + p.arm,
+  '1B': p => (ELIG['1B'](p) ? 100 : 0) + p.coordination * 0.6 + p.height * 8,
+  SS: p => (ELIG.SS(p) ? 100 : 0) + p.arm * 0.4 + p.coordination * 0.4 + p.speed * 0.2,
+  CF: p => (ELIG.CF(p) ? 100 : 0) + p.speed * 0.6 + p.coordination * 0.2 + p.arm * 0.2,
+  LF: p => (ELIG.LF(p) ? 100 : 0) + p.speed * 0.5 + p.arm * 0.3 + p.coordination * 0.2,
+  RF: p => (ELIG.RF(p) ? 100 : 0) + p.speed * 0.5 + p.arm * 0.3 + p.coordination * 0.2,
+  '3B': p => p.arm * 0.5 + p.coordination * 0.5,
+  '2B': p => p.coordination * 0.6 + p.speed * 0.4,
+};
+const ASSIGN_ORDER = ['P', 'C', 'SS', '1B', 'CF', 'LF', 'RF', '3B', '2B'];
+function autoPositions(ids) {
+  const left = new Set(ids), pos = {};
+  for (const slot of ASSIGN_ORDER) {
+    let best = null, bv = -1;
+    for (const id of left) { const v = FIT[slot](BY_ID[id]); if (v > bv) { bv = v; best = id; } }
+    pos[best] = POS.indexOf(slot); left.delete(best);
+  }
+  return pos;
+}
+function autoOrder(ids) {
+  const bat = id => { const p = BY_ID[id]; return card.bat(p) * 10 + p.t * 2 + p.eye / 20; };
+  const o = [...ids].sort((a, b) => bat(b) - bat(a));
+  let fi = 0; for (let i = 1; i < Math.min(5, o.length); i++) if (BY_ID[o[i]].t > BY_ID[o[fi]].t) fi = i;
+  o.unshift(o.splice(fi, 1)[0]);
+  return o;
+}
+
+/* ======================================================================
+   POOL + STATE
+   ====================================================================== */
+const POOL = PLAYERS.slice();
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const inRank = (lo, hi) => POOL.filter(p => p.mr >= lo && p.mr <= hi);
+
+const SAVE_KEY = 'bbRogueball.v3';
+let run = null, meta = { best: 0, runs: 0 };
+let settings = { music: false, commentary: false, gooch: false, crowd: false, playerTalking: false, playerChatter: false, reelSound: true, autoplay: false };
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run, meta, settings })); } catch (e) {} }
+function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { run = s.run; meta = s.meta || meta; settings = { ...settings, ...(s.settings || {}) }; if (run && run.shop) run.shop = run.shop.map(x => typeof x === 'string' ? { type: 'card', id: x } : x); } } catch (e) {} }
+const PU_KEYS = CONFIG.powerups.map(p => p.k);
+const boostsOn = pid => run.augments.filter(x => x.on === pid && AUG[x.id]);
+const winPay = n => (CONFIG.econ.winByInnings[n ? n.innings : 3] ?? 5) + (n && n.tee ? CONFIG.econ.teeBonus : 0);
+
+/* ======================================================================
+   EFFECTS: one pipeline for display and for the game
+   ====================================================================== */
+// permanent per-player changes from augments live in run.perm[id] = { d: {}, set: {}, min: {} }
+function permOf(id) { return run.perm[id] || (run.perm[id] = { d: {}, set: {}, min: {} }); }
+function addPerm(id, spec) {
+  const m = permOf(id);
+  for (const [k, v] of Object.entries(spec.d || {})) m.d[k] = (m.d[k] || 0) + v;
+  for (const [k, v] of Object.entries(spec.set || {})) { m.set[k] = v; delete m.d[k]; }
+  for (const [k, v] of Object.entries(spec.min || {})) m.min[k] = Math.max(m.min[k] || 0, v);
+}
+// layers for this game: { [id]: { d, set, min } } for the user's lineup and the opponent
+function gameLayers(opts = {}) {
+  const L = {}, add = (id, spec) => {
+    const m = L[id] || (L[id] = { d: {}, set: {}, min: {} });
+    for (const [k, v] of Object.entries(spec.d || {})) m.d[k] = (m.d[k] || 0) + v;
+    for (const [k, v] of Object.entries(spec.set || {})) m.set[k] = v;
+    for (const [k, v] of Object.entries(spec.min || {})) m.min[k] = Math.max(m.min[k] || 0, v);
+  };
+  for (const id of [...run.roster, ...run.bench]) if (run.perm[id]) add(id, run.perm[id]);
+  for (const b of run.slotBuffs) { const id = run.order[b.slot]; if (id != null) add(id, { d: b.d }); }
+  for (const c of activeCards()) {
+    const C = CARD[c.id];
+    if (C.who === 'team' && C.perKid) { const n = run.roster.filter(id => BY_ID[id].kind === 'kid').length; if (n) run.roster.forEach(id => add(id, { d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])) })); }
+    else if (C.who === 'team') run.roster.forEach(id => add(id, C));
+    else if (C.who === 'pos') run.roster.filter(id => run.pos[id] === C.pos).forEach(id => add(id, C));
+    else if (C.who === 'of') run.roster.filter(id => [0, 1, 2].includes(run.pos[id])).forEach(id => add(id, C));
+    else if (C.who === 'slots') C.slots.forEach(s => run.order[s] != null && add(run.order[s], C));
+    else if (C.who === 'minspeed') run.roster.filter(id => BY_ID[id].t <= 3).forEach(id => add(id, C));
+    else if (C.who === 'pick' && c.on != null && (run.roster.includes(c.on) || run.bench.includes(c.on))) add(c.on, C);
+    else if (C.who === 'opp' && run.next) run.next.ids.forEach(id => add(id, C));
+  }
+  if (run.next && run.next.boost) run.next.ids.forEach(id => add(id, { d: { hitting: run.next.boost, swing: run.next.boost, eye: run.next.boost } }));
+  if (opts.combos !== false) for (const [id, kb] of Object.entries(kidBonuses())) { const m = L[id] || (L[id] = { d: {}, set: {}, min: {} }); m.cb = kb.d; }
+  return L;
+}
+function finalStats(id, L) {
+  const p = BY_ID[id], m = L && L[id], out = { ...p };
+  if (!m) return out;
+
+  const cb = m.cb || {}, keys = new Set([...Object.keys(m.d), ...Object.keys(m.set), ...Object.keys(m.min), ...Object.keys(cb)]);
+  for (const k of keys) {
+    let v = k in m.set ? m.set[k] : p[k] + (cb[k] || 0);
+    v += m.d[k] || 0;
+    if (k in m.min) v = Math.max(v, m.min[k]);
+    out[k] = clampStat(k, v);
+  }
+  out.t = tierOf(out.speed);
+  return out;
+}
+const S = id => finalStats(id, gameLayers());
+
+/* ======================================================================
+   KID COMBOS: the game's own pairings (maybe_kid_bonuses), simulated here so the page shows them.
+   Each row is the kid's whole stat line the game swaps in, so the order below matches the game's.
+   ====================================================================== */
+const KB_ROW = {
+  webA: [0, 94, 88, 58, 72, 85, 78, 64, 82, 95, 70, 81, 76, 1, 66, 51, 68, 0, 0, 81, 0, 88, 80, 0, 0, 71],  // kid 8
+  webS: [0, 94, 88, 58, 72, 85, 78, 64, 82, 95, 70, 81, 76, 1, 66, 51, 68, 0, 0, 81, 0, 88, 80, 0, 0, 71],  // kid 9
+  ronny: [0, 42, 50, 15, 20, 48, 38, 56, 14, 15, 15, 19, 41, 1, 62, 26, 44, 38, 39, 0, 65, 0, 70, 73, 0, 0],  // kid 16
+  sally: [0, 82, 62, 83, 67, 96, 94, 74, 51, 71, 70, 97, 72, 1, 80, 91, 65, 78, 97, 0, 97, 0, 0, 0, 80, 90],  // kid 6
+  amir: [0, 37, 95, 63, 69, 39, 54, 90, 75, 30, 88, 68, 50, 1, 56, 38, 0, 90, 100, 0, 0, 0, 80, 84, 96, 86],  // kid 18
+  markyBJ: [0, 92, 61, 81, 67, 77, 71, 57, 79, 69, 39, 88, 98, 2, 72, 60, 68, 77, 18, 0, 38, 76, 0, 78, 57, 21],  // kid 23
+  bj: [0, 25, 28, 24, 43, 34, 42, 29, 45, 31, 45, 46, 41, 1, 10, 34, 47, 86, 0, 89, 0, 31, 0, 41, 0, 0],  // kid 7
+  tony: [0, 71, 82, 73, 83, 100, 80, 84, 86, 85, 87, 12, 1, 1, 60, 49, 20, 84, 0, 43, 0, 33, 100, 56, 0, 0],  // kid 26
+  angela: [0, 93, 87, 51, 84, 75, 82, 89, 80, 63, 44, 78, 100, 1, 59, 66, 74, 72, 0, 0, 0, 57, 75, 67, 28, 0],  // kid 3
+  maria: [0, 64, 16, 87, 80, 73, 73, 87, 75, 80, 64, 15, 21, 2, 56, 80, 73, 77, 0, 67, 0, 0, 0, 28, 31, 86],  // kid 2
+  markyUp: [0, 92, 51, 81, 67, 77, 81, 77, 69, 69, 79, 88, 48],  // kid 23
+  markyDown: [0, 50, 11, 40, 37, 57, 35, 57, 30, 30, 30, 88, 48],  // kid 23
+  kimmy: [0, 71, 82, 73, 68, 75, 75, 72, 84, 85, 56, 57],  // kid 1
+  ernie: [0, 85, 82, 98, 68, 75, 85, 72, 84, 85, 56, 23],  // kid 29
+};
+const COLKEY = Object.fromEntries(Object.entries(COL).map(([k, v]) => [v, k]));
+const PINK = 7, SOX = [126, 128];
+const COMBO = {
+  webber: { name: 'Twin power', txt: 'Ashley and Sidney Webber in the same lineup: both get a big boost.' },
+  dobbs: { name: 'Dobbs sibling rivalry', txt: 'Sally and Ronny Dobbs in the same lineup: Sally gets a big boost, Ronny a big drop.' },
+  khan: { name: 'Khan brothers', txt: 'Amir and Achmed Khan in the same lineup: Amir gets a boost.' },
+  marky: { name: 'Marky and Billy Jean', txt: 'Marky Dubois and Billy Jean Blackwood in the same lineup: Marky gets a boost, Billy Jean a drop.' },
+  vec: { name: 'Delvecchio showdown', txt: 'Tony and Angela Delvecchio on opposite teams: both step it up.' },
+  pink: { name: 'Pretty in pink', txt: 'Maria Luna on a team wearing pink (primary or secondary color): boost.' },
+  soxDown: { name: 'Sox trouble', txt: 'Marky Dubois on the Red Sox or White Sox: drop. Facing them instead: boost.' },
+  soxUp: { name: 'Sox trouble', txt: 'Marky Dubois facing the Red Sox or White Sox: boost. Playing for them: drop.' },
+  cal: { name: 'Iron Man', txt: 'Cal Ripken Jr. in the lineup: +10 stamina for the whole lineup, up to 100.' },
+  kimmy: { name: 'Home field', txt: 'Kimmy Eckman at Eckman Acres: boost.' },
+  ernie: { name: 'Home field', txt: 'Ernie Steele at Steele Stadium: boost.' },
+};
+// every combo a player can be part of, for the player card
+const COMBO_OF = { 8: ['webber'], 9: ['webber'], 6: ['dobbs'], 16: ['dobbs'], 17: ['khan'], 18: ['khan'], 23: ['marky', 'soxUp'], 7: ['marky'], 26: ['vec'], 3: ['vec'], 2: ['pink'], 34: ['cal'], 1: ['kimmy'], 29: ['ernie'] };
+// what a combo does to one kid on its own, for the card preview
+function comboPreview(key, id) {
+  const p = BY_ID[id], row = { webber: KB_ROW.webA, dobbs: id === 6 ? KB_ROW.sally : KB_ROW.ronny, khan: id === 18 ? KB_ROW.amir : null, marky: id === 23 ? KB_ROW.markyBJ : KB_ROW.bj,
+    vec: id === 26 ? KB_ROW.tony : KB_ROW.angela, pink: KB_ROW.maria, soxUp: KB_ROW.markyUp, soxDown: KB_ROW.markyDown, kimmy: KB_ROW.kimmy, ernie: KB_ROW.ernie }[key];
+  const d = {};
+  if (key === 'cal') return { stamina: 10 };
+  if (!row) return d;
+  for (let c = 1; c < row.length; c++) { const k = COLKEY[c]; if (k && row[c] !== p[k]) d[k] = row[c] - p[k]; }
+  if (key === 'soxUp') d._down = comboPreview('soxDown', id);
+  return d;
+}
+// the other team's name and colors: picked here (like the game's own random pick) so the Sox and pink checks are known up front
+function cpuTeam(n) {
+  if (!n) return null;
+  if (!n.cpu) {
+    const mine = run.team || {}, any = o => +pick(Object.keys(o));
+    let noun; do { noun = any(NOUN); } while (noun === mine.noun);
+    // backyard names can only wear the 9 basic colors on the other side; MLB names take any color
+    const pal = noun > 121 ? ALL_COLOR : TEAM_COLOR;
+    const c1 = any(pal); let c2; do { c2 = any(pal); } while (c2 === c1);
+    n.cpu = { noun, adj: any(ADJ), c1, c2 };
+  }
+  return n.cpu;
+}
+const cpuTeamName = n => { const c = cpuTeam(n); return c ? `${ADJ[c.adj] || ''} ${NOUN[c.noun]}`.trim() : ''; };
+// run the game's checks for this matchup: returns { [id]: { d: {stat: delta}, src: [combo keys] } }
+function kidBonuses() {
+  const n = run.next, mine = run.roster.slice(), opp = n ? n.ids.slice() : [];
+  const cpu = cpuTeam(n), myCols = run.team && run.team.noun <= 121 ? [basicOf(run.team.c1), basicOf(run.team.c2)] : [];
+  const teams = [{ ids: mine, noun: run.team ? run.team.noun : 0, cols: myCols }, { ids: opp, noun: cpu ? cpu.noun : 0, cols: cpu && cpu.noun <= 121 ? [cpu.c1, cpu.c2] : [] }];
+  const cur = {}, src = {};
+  const get = id => cur[id] || (cur[id] = { ...BY_ID[id] });
+  const setRow = (id, row, key) => { const p = get(id); for (let c = 1; c < row.length; c++) { const k = COLKEY[c]; if (k) p[k] = row[c]; } (src[id] || (src[id] = [])).push(key); };
+  const field = n ? n.field : -1;
+  teams.forEach((T, ti) => {
+    const kids = T.ids, other = teams[1 - ti].ids, has = id => kids.includes(id);
+    if (has(9) && has(8)) { setRow(8, KB_ROW.webA, 'webber'); setRow(9, KB_ROW.webS, 'webber'); }
+    if (has(16) && has(6)) { setRow(16, KB_ROW.ronny, 'dobbs'); setRow(6, KB_ROW.sally, 'dobbs'); }
+    if (has(18) && has(17)) setRow(18, KB_ROW.amir, 'khan');
+    if (has(23) && has(7)) { setRow(23, KB_ROW.markyBJ, 'marky'); setRow(7, KB_ROW.bj, 'marky'); }
+    if (has(26) && other.includes(3)) { setRow(26, KB_ROW.tony, 'vec'); setRow(3, KB_ROW.angela, 'vec'); }
+    if (T.cols.includes(PINK) && has(2)) setRow(2, KB_ROW.maria, 'pink');
+    if (SOX.includes(T.noun)) { if (other.includes(23)) setRow(23, KB_ROW.markyUp, 'soxUp'); else if (has(23)) setRow(23, KB_ROW.markyDown, 'soxDown'); }
+    if (has(34)) for (const id of kids) { const p = get(id); p.stamina = Math.min(p.stamina + 10, 100); if (p.stamina !== BY_ID[id].stamina || id === 34) (src[id] || (src[id] = [])).push('cal'); }
+    if (field === 3 && has(1)) setRow(1, KB_ROW.kimmy, 'kimmy');
+    if (field === 6 && has(29)) setRow(29, KB_ROW.ernie, 'ernie');
+  });
+  const out = {};
+  for (const id of Object.keys(src)) {
+    const p = cur[id], b = BY_ID[id], d = {};
+    for (const k of Object.values(COLKEY)) if (p[k] !== b[k]) d[k] = p[k] - b[k];
+    out[id] = { d, src: [...new Set(src[id])] };
+  }
+  return out;
+}
+// one card per family counts (Bat Em In common + epic: only the epic works)
+function activeCards() {
+  const best = {};
+  for (const c of run.cards) { const C = CARD[c.id], b = best[C.name]; if (!b || RAR_RANK[C.rarity] > RAR_RANK[CARD[b.id].rarity]) best[C.name] = c; }
+  return run.cards.filter(c => best[CARD[c.id].name] === c);
+}
+const ownedFamily = name => run.cards.find(c => CARD[c.id].name === name);
+// situational boosts sent to the game: k = player id, 0 = whole lineup
+function condList() {
+  const out = [];
+  for (const a of run.augments) { const A = AUG[a.id]; if (A && A.cond && run.roster.includes(a.on)) out.push({ k: a.on, c: A.cond.c, d: A.cond.d, src: A.name, txt: A.text }); }
+  for (const c of activeCards()) { const C = CARD[c.id]; if (C.cond) out.push({ k: 0, c: C.cond.c, d: C.cond.d, src: C.name, txt: C.text }); }
+  return out;
+}
+const headStarters = () => [...new Set(run.augments.filter(a => AUG[a.id] && AUG[a.id].headstart && run.roster.includes(a.on)).map(a => a.on))];
+// where a player's always-on changes come from, for the in-game panel
+function statSources(id) {
+  const out = [], opp = run.next && run.next.ids.includes(id), kb = kidBonuses()[id];
+  if (kb) {
+    const nm = ks => ks.map(k => COMBO[k].name).filter((x, i, a) => a.indexOf(x) === i).join(' + '), tx = ks => ks.map(k => COMBO[k].txt).join(' ');
+    const rest = kb.src.filter(k => k !== 'cal');
+    if (kb.src.includes('cal') && rest.length) {
+      const { stamina, ...d } = kb.d;
+      out.push({ src: nm(rest), txt: tx(rest), d, set: {}, min: {} });
+      if (stamina) out.push({ src: nm(kb.src), txt: tx(kb.src), d: { stamina }, set: {}, min: {} });
+    } else out.push({ src: nm(kb.src), txt: tx(kb.src), d: kb.d, set: {}, min: {} });
+  }
+  if (opp) {
+    for (const c of activeCards()) { const C = CARD[c.id]; if (C.who === 'opp') out.push({ src: C.name, txt: C.text, d: C.d || {}, set: {}, min: C.min || {} }); }
+    if (run.next.boost) out.push({ src: 'CPU boost', d: { hitting: run.next.boost, swing: run.next.boost, eye: run.next.boost }, set: {}, min: {} });
+    return out;
+  }
+  for (const a of run.augments) {
+    const A = AUG[a.id]; if (!A) continue;
+    if (A.target === 'pick' && a.on === id && (A.d || A.set || A.min)) out.push({ src: A.name, txt: A.text, d: A.d || {}, set: A.set || {}, min: A.min || {} });
+    if (A.slot && A.slot.some(sl => run.order[sl] === id)) out.push({ src: A.name, txt: A.text, d: A.d || {}, set: {}, min: {} });
+  }
+  for (const c of activeCards()) {
+    const C = CARD[c.id], on = run.roster.includes(id);
+    const hit = C.who === 'team' ? on : C.who === 'pos' ? on && run.pos[id] === C.pos : C.who === 'of' ? on && [0, 1, 2].includes(run.pos[id]) : C.who === 'slots' ? C.slots.some(sl => run.order[sl] === id)
+      : C.who === 'minspeed' ? on && BY_ID[id].t <= 3 : C.who === 'pick' ? c.on === id : false;
+    if (hit && C.perKid) { const n = run.roster.filter(x => BY_ID[x].kind === 'kid').length; if (n) out.push({ src: `${C.name} (${n} kids)`, txt: C.text, d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])), set: {}, min: {} }); }
+    else if (hit && !C.cond && (C.d || C.min || C.set)) out.push({ src: C.name, txt: C.text, d: C.d || {}, set: C.set || {}, min: C.min || {} });
+  }
+  return out;
+}
+
+/* ======================================================================
+   AUDIO: master gain in front of everything; the engine is silent behind the menus
+   ====================================================================== */
+var Sound_Wrapped;
+const Sound = (() => {
+  const gains = [];
+  let vol = 25, inGame = false, ui = null;
+  try { const s = localStorage.getItem('bbRogueball.vol'); if (s != null && !isNaN(+s)) vol = +s; } catch (e) {}
+  const Orig = window.AudioContext || window.webkitAudioContext;
+  if (Orig) {
+    const destDesc = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'destination');
+    class Wrapped extends Orig {
+      constructor(...a) {
+        super(...a);
+        const g = Orig.prototype.createGain.call(this);
+        g.connect(destDesc.get.call(this));
+        Object.defineProperty(this, 'destination', { get: () => g });
+        g.__ui = Wrapped.__nextIsUI || false; Wrapped.__nextIsUI = false;
+        gains.push(g); apply();
+      }
+    }
+    window.AudioContext = Wrapped; if (window.webkitAudioContext) window.webkitAudioContext = Wrapped;
+    Sound_Wrapped = Wrapped;
+  }
+  function uiCtx() { if (!ui && Orig) { Sound_Wrapped.__nextIsUI = true; ui = new window.AudioContext(); } return ui; }
+  function apply() { const g = vol / 100; for (const n of gains) n.gain.value = n.__ui ? g : (inGame ? g : 0); }
+  function set(v) { vol = clamp(+v, 0, 100); try { localStorage.setItem('bbRogueball.vol', vol); } catch (e) {} apply(); document.querySelectorAll('#barVol,#hudVol').forEach(i => i.value = vol); }
+  function tick(freq = 1400, dur = 0.03) {
+    if (!settings.reelSound) return;
+    const c = uiCtx(); if (!c) return;
+    if (c.state === 'suspended') c.resume();
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.15, c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + dur + 0.01);
+  }
+  return { set, get: () => vol, setInGame: b => { inGame = b; apply(); }, tick };
+})();
+
+/* ======================================================================
+   RUN LIFECYCLE
+   ====================================================================== */
+function newRun() {
+  const adjs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], nouns = [101, 102, 103, 104, 105, 106];
+  run = { seq: run ? run.seq : 0, game: 1, wins: 0, money: CONFIG.startMoney, roster: [], bench: [], pos: {}, order: [],
+    perm: {}, slotBuffs: [], augments: [], cards: [], shop: [], pu: Object.fromEntries(PU_KEYS.map(k => [k, 0])),
+    team: { adj: pick(adjs), noun: pick(nouns), c1: 1 + rnd(9), c2: 1 + rnd(9) },
+    tradeExtra: 0, interestCap: CONFIG.econ.interestCap, rerollCost: CONFIG.rerollBase,
+    history: [], totals: {}, phase: 'name', draft: { round: 0, cands: [] }, next: null, tradeBlock: [], pending: null };
+  save();
+}
+const owned = () => new Set([...run.roster, ...run.bench]);
+const teamName = () => `${ADJ[run.team.adj]} ${NOUN[run.team.noun]}`;
+
+/* ---- draft ---- */
+const NEED_KEYS = { C: p => p.arm >= 90, P: p => ELIG.P(p), '1B': p => ELIG['1B'](p), SS: p => ELIG.SS(p), OF: p => p.t >= 6 };
+function unmetNeeds() {
+  const ps = run.roster.map(id => BY_ID[id]), need = [], used = new Set();
+  const take = (key, n = 1) => { for (let k = 0; k < n; k++) { const i = ps.findIndex((p, j) => !used.has(j) && NEED_KEYS[key](p)); if (i < 0) need.push(key); else used.add(i); } };
+  take('C'); take('P'); take('SS'); take('1B'); take('OF', 3);
+  return need;
+}
+function makeDraftRound() {
+  const r = run.draft.round, [lo, hi] = CONFIG.draftBuckets[r], taken = owned();
+  const pool = inRank(lo, hi).filter(p => !taken.has(p.id));
+  const cands = [], needs = unmetNeeds(), left = 9 - r;
+  const forced = needs.length >= left - 1 ? [...new Set(needs)] : [];
+  for (const key of forced) {
+    if (cands.length >= CONFIG.draftChoices - 1) break;
+    let opts = pool.filter(p => NEED_KEYS[key](p) && !cands.includes(p.id));
+    if (!opts.length) opts = POOL.filter(p => !taken.has(p.id) && p.mr > 24 && NEED_KEYS[key](p) && !cands.includes(p.id)).sort((a, b) => Math.abs(a.mr - (lo + hi) / 2) - Math.abs(b.mr - (lo + hi) / 2)).slice(0, 6);
+    if (opts.length) cands.push(pick(opts).id);
+  }
+  for (const p of shuffle(pool.slice())) { if (cands.length >= CONFIG.draftChoices) break; if (!cands.includes(p.id)) cands.push(p.id); }
+  run.draft.cands = shuffle(cands);
+}
+function placeDrafted(id) {   // best open spot for the new pick
+  const open = POS.map((_, k) => k).filter(k => !run.roster.some(x => x !== id && run.pos[x] === k));
+  let best = open[0], bv = -1;
+  for (const k of open) { const v = FIT[POS[k]](BY_ID[id]); if (v > bv) { bv = v; best = k; } }
+  run.pos[id] = best;
+}
+
+/* ---- next game ---- */
+function reelOutcomes() { const out = []; for (const f of CONFIG.fields) for (const i of CONFIG.innings) out.push({ field: f, innings: i, tee: false }); return out; }
+function rollGame() {
+  const outs = reelOutcomes();
+  return Math.random() * (outs.length + CONFIG.bonusSlotWeight) < CONFIG.bonusSlotWeight ? { field: pick(CONFIG.fields), innings: 3, tee: true } : pick(outs);
+}
+function applyRoll(roll) {
+  const n = run.next;
+  n.field = roll.field; n.innings = roll.innings; n.tee = roll.tee;
+  n.difficulty = roll.tee ? 4 : CONFIG.difficulty(run.game);
+}
+function makeOpponent() {
+  const g = run.game, taken = owned(), rival = g % CONFIG.rivalryEvery === 0;
+  const center = Math.max(8, CONFIG.oppCenterRank(g) - (rival ? 25 : 0));
+  const pool = POOL.filter(p => !taken.has(p.id) && p.mr >= center - 35 && p.mr <= center + 35);
+  const ids = [];
+  for (const key of ['C', 'P', 'SS', '1B', 'OF', 'OF', 'OF']) {
+    let opts = pool.filter(p => !ids.includes(p.id) && NEED_KEYS[key](p));
+    if (!opts.length) opts = POOL.filter(p => !taken.has(p.id) && !ids.includes(p.id) && NEED_KEYS[key](p)).sort((a, b) => Math.abs(a.mr - center) - Math.abs(b.mr - center)).slice(0, 8);
+    if (opts.length) ids.push(pick(opts).id);
+  }
+  for (const p of shuffle(pool.slice())) { if (ids.length >= 9) break; if (!ids.includes(p.id)) ids.push(p.id); }
+  run.next = { ids, pos: autoPositions(ids), order: autoOrder(ids), rival, boost: CONFIG.oppBoost(g) + (rival ? 4 : 0),
+    avgRank: Math.round(ids.reduce((a, i) => a + BY_ID[i].mr, 0) / ids.length) };
+  applyRoll(rollGame());
+}
+function refreshTradeBlock() {
+  const taken = owned(), n = CONFIG.tradeBlockSize + run.tradeExtra, opp = new Set(run.next ? run.next.ids : []);
+  const avg = run.roster.reduce((a, i) => a + BY_ID[i].mr, 0) / Math.max(1, run.roster.length);
+  const ids = []; let guard = 0;
+  while (ids.length < n && guard++ < 400) {
+    const r = Math.random();
+    const [lo, hi] = r < 0.15 ? [1, 40] : r < 0.55 ? [Math.max(1, avg - 60), avg] : [avg - 20, avg + 60];
+    const opts = POOL.filter(p => !taken.has(p.id) && !opp.has(p.id) && !ids.includes(p.id) && p.mr >= lo && p.mr <= hi);
+    if (opts.length) ids.push(pick(opts).id);
+  }
+  run.tradeBlock = ids;
+}
+function stockShop() {
+  const have = new Set(run.cards.map(c => c.id)), out = [];
+  const tot = Object.values(CONFIG.cardOdds).reduce((a, b) => a + b, 0);
+  const mixTot = Object.values(CONFIG.shopMix).reduce((a, b) => a + b, 0);
+  let guard = 0;
+  while (out.length < CONFIG.shopSlots && guard++ < 300) {
+    let m = Math.random() * mixTot, type = 'card';
+    for (const [k, w] of Object.entries(CONFIG.shopMix)) { m -= w; if (m <= 0) { type = k; break; } }
+    if (type === 'card') {
+      let r = Math.random() * tot, rar = 'common';
+      for (const [k, w] of Object.entries(CONFIG.cardOdds)) { r -= w; if (r <= 0) { rar = k; break; } }
+      const opts = CARDS.filter(c => c.rarity === rar && !c.retired && !have.has(c.id) && !out.some(o => o.type === 'card' && CARD[o.id].name === c.name)
+        && (o => !o || RAR_RANK[CARD[o.id].rarity] < RAR_RANK[c.rarity])(ownedFamily(c.name)));
+      if (opts.length) out.push({ type, id: pick(opts).id });
+    } else if (type === 'aug') {
+      const opts = AUGMENTS.filter(a => !a.money && !a.pu && !a.retired && !out.some(o => o.id === a.id));
+      if (opts.length) out.push({ type, id: pick(opts).id });
+    } else {
+      const opts = CONFIG.powerups.filter(p => !out.some(o => o.id === p.k));
+      if (opts.length) out.push({ type: 'pu', id: pick(opts).k });
+    }
+  }
+  run.shop = out;
+}
+const cardSell = cid => Math.floor(CONFIG.cardPrice[CARD[cid].rarity] * CONFIG.cardSellRate);
+// a card in the shop vs the same card family you own: 'new', 'upgrade' (trade yours in) or 'owned' (yours is as good or better)
+function cardStatus(cid) {
+  const o = ownedFamily(CARD[cid].name);
+  if (!o) return { kind: 'new' };
+  return RAR_RANK[CARD[o.id].rarity] < RAR_RANK[CARD[cid].rarity] ? { kind: 'upgrade', old: o } : { kind: 'owned', old: o };
+}
+const shopPrice = it => {
+  if (it.type === 'card') { const st = cardStatus(it.id), full = CONFIG.cardPrice[CARD[it.id].rarity]; return st.kind === 'upgrade' ? Math.max(1, full - cardSell(st.old.id)) : full; }
+  return it.type === 'aug' ? CONFIG.augPrice : CONFIG.powerups.find(p => p.k === it.id).price;
+};
+function startRound() {
+  run.rerollCost = CONFIG.rerollBase;
+  run.shopRerollCost = CONFIG.shopReroll.base;
+  run.freeShop = run.cards.filter(c => CARD[c.id] && CARD[c.id].freeShop).reduce((a, c) => a + CARD[c.id].freeShop, 0);
+  run.fieldRerollCost = CONFIG.fieldReroll.base;
+  makeOpponent(); refreshTradeBlock(); stockShop();
+  run.phase = 'reel'; run.reelSeen = false; save();
+  renderReel();
+}
+
+/* ======================================================================
+   UI helpers
+   ====================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const FACE_DATA = /*FACES_JSON*/null, FIELD_DATA = /*FIELDS_JSON*/null;
+const FACE = id => FACE_DATA ? FACE_DATA.img[FACE_DATA.map[id]] : `assets/faces/${id}.png`;
+const FIELD_IMG = f => FIELD_DATA ? FIELD_DATA[f] : `assets/fields/${f}.png`;
+const PARK = ['Dirt Yards', 'Playground Commons', 'Cement Gardens', 'Eckman Acres', 'Big City Stadium', 'Super Colossal Dome', 'Steele Stadium', 'Tin Can Alley', 'Parks Department', 'Sandy Flats'];
+const DIFF = { 1: 'Easy', 2: 'Hard', 3: 'Medium', 4: 'Tee ball' };
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); $('app').querySelector('main').scrollTop = 0; }
+const puLabel = k => CONFIG.powerups.find(p => p.k === k).name;
+const interestNow = () => Math.min(run.interestCap, Math.floor(run.money / CONFIG.econ.interestPer));
+const PU_ICON = /*PU_ICONS*/null;
+const puIcon = (k, n) => `<span class="puIcon ${k === 'juice' ? 'j' : ''} ${n ? '' : 'zero'}" title="${esc(puLabel(k))}: ${n}"><img src="${PU_ICON ? PU_ICON[k] : ''}" alt="${esc(puLabel(k))}"><b>${n}</b></span>`;
+function topbar() {
+  $('tGame').textContent = run ? run.game : '-'; $('tWins').textContent = run ? run.wins : 0;
+  $('tMoney').textContent = '$' + (run ? run.money : 0); $('tBest').textContent = meta.best;
+  $('tInt').textContent = run ? `bank, +$${interestNow()} interest` : 'bank';
+  $('puBar').innerHTML = run ? CONFIG.powerups.map(p => puIcon(p.k, run.pu[p.k] || 0)).join('') : '';
+}
+const pips = n => `<span class="pip-row" aria-label="${n} of 10">${Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+const shortName = id => { const a = BY_ID[id].name.split(' '); return a.length > 1 ? `${a[0]} ${a[a.length - 1][0]}.` : a[0]; };
+function cardHTML(id, opts = {}) {
+  const base = BY_ID[id], p = opts.boosted ? S(id) : base;
+  const raw = [['Contact', 'hitting'], ['Power', 'swing'], ['Vision', 'eye'], ['Speed', 'speed'], ['Arm', 'arm'], ['Throw acc', 'throwing'], ['Coord', 'coordination'], ['Stamina', 'stamina']];
+  const pitches = PITCHES.filter(k => base[k] > 0 || p[k] > 0).sort((a, b) => p[b] - p[a]).map(k => `${PITCH_LABEL[k]} ${p[k]}`).join(', ');
+  const kind = base.kind === 'pro' ? 'MLB pro' : base.kind === 'kid' ? 'Backyard kid' : base.kind === 'clanky' ? 'Robot' : base.clone_of ? `Clone of ${BY_ID[base.clone_of].name}` : 'Generic kid';
+  const cls = k => p[k] > base[k] ? 'up' : p[k] < base[k] ? 'down' : '';
+  return `<button class="pcard ${base.kind === 'pro' ? 'pro' : ''}" data-id="${id}">
+    <div class="ovr num">${value(base)}</div>
+    <div class="top"><img class="face" src="${FACE(id)}" alt=""><div><div class="nm">${esc(base.name)}</div>
+    <div class="meta">${kind}, height ${p.height}, ${base.handedness === 2 ? 'lefty' : 'righty'}</div></div></div>
+    <div class="tags">${tagsHTML(p) || '<span class="tag">2B / 3B</span>'}</div>
+    ${statBars(base, p)}
+    ${boostsHTML(id)}
+    ${opts.compact ? combosCompact(id) : combosHTML(id)}
+    ${opts.price != null ? `<div style="margin-top:6px"><span class="price">$${opts.price}</span></div>` : ''}
+  </button>`;
+}
+function boostSlots(pid, dup, big) {
+  const bl = boostsOn(pid);
+  return `<div class="bslots ${big ? 'big' : ''}">${Array.from({ length: CONFIG.maxBoosts }, (_, i) => { const x = bl[i]; if (!x) return '<span class="bs"></span>'; const A = AUG[x.id];
+    return `<span class="bs on ${dup && A.name === dup ? 'dup' : ''}" data-tiptext="${esc('t:' + A.name + '|' + A.text)}">${esc(A.name)}</span>`; }).join('')}</div>`;
+}
+function boostsHTML(id) {
+  if (!run || !run.augments || !owned().has(id)) return '';
+  return `<div class="combos"><div class="gh">Boosts</div>${boostSlots(id, null, true)}</div>`;
+}
+// one line per combo for the draft grid; the full breakdown is on the pop-up card
+function combosCompact(id) {
+  const keys = COMBO_OF[id]; if (!keys) return '';
+  return `<div class="ccompact">${keys.map(k => `<span data-tiptext="${esc('t:' + COMBO[k].name + '|' + COMBO[k].txt)}">${esc(COMBO[k].name)}</span>`).join('')}</div>`;
+}
+function combosHTML(id) {
+  const keys = COMBO_OF[id]; if (!keys) return '';
+  let on = [];
+  try { if (run && run.roster) { const kb = kidBonuses()[id]; on = kb ? kb.src : []; } } catch (e) {}
+  const SHOW = ['swing', 'hitting', 'eye', 'speed', 'arm', 'throwing', 'coordination', 'stamina', ...CORE_PITCHES];
+  const fmt = d => SHOW.filter(k => d[k]).map(k => `<span class="${d[k] > 0 ? 'up' : 'down'}">${d[k] > 0 ? '+' : ''}${d[k]} ${STAT_LABEL[k]}</span>`).join(' ');
+  return `<div class="combos"><div class="gh">Combos</div>${keys.map(k => {
+    const C = COMBO[k], d = comboPreview(k, id), act = on.includes(k) || (k === 'soxUp' && on.includes('soxDown'));
+    const net = k === 'soxUp' && !on.includes('soxUp') ? -1 : SHOW.reduce((a, s) => a + (d[s] || 0), 0);
+    const lines = k === 'soxUp' ? `<div class="cd">Facing them: ${fmt(d)}</div><div class="cd">Playing for them: ${fmt(d._down)}</div>` : `<div class="cd">${fmt(d) || 'No change to these stats'}</div>`;
+    return `<div class="combo ${act ? 'on' : ''} ${act && net < 0 ? 'neg' : ''}"><b>${esc(C.name)}</b>${act ? ' <em>active</em>' : ''}<div class="ct">${esc(C.txt)}</div>${lines}</div>`;
+  }).join('')}</div>`;
+}
+function statBars(base, p) {
+  const bar = (label, k) => {
+    const v = p[k] || 0, w = Math.min(100, v / 125 * 100), c = v > (base[k] || 0) ? 'up' : v < (base[k] || 0) ? 'down' : '';
+    if (k === 'speed') label = `<span data-tiptext="speed">Speed <em class="tier">T${tierOf(v)}</em></span>`;
+    return `<div class="sbar"><span>${label}</span><span class="tr"><i class="${v > 100 ? 'hot' : ''}" style="width:${w}%"></i><u></u></span><b class="${c}">${v}</b></div>`;
+  };
+  const top4 = CORE_PITCHES;
+  return `<div class="sgrp"><div class="gh">Hitting</div>${bar('Power', 'swing')}${bar('Contact', 'hitting')}${bar('Vision', 'eye')}</div>
+    <div class="sgrp"><div class="gh">Fielding and running</div>${bar('Speed', 'speed')}${bar('Arm', 'arm')}${bar('Throw', 'throwing')}${bar('Coord', 'coordination')}</div>
+    <div class="sgrp"><div class="gh">Pitching</div>${bar('Stamina', 'stamina')}${top4.map(k => bar(PITCH_LABEL[k], k)).join('')}</div>`;
+}
+function openModal(html) { $('modalInner').innerHTML = html; $('modal').classList.add('on'); }
+function closeModal() { $('modal').classList.remove('on'); }
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.dataset.close != null) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.body.classList.contains('playing')) closeModal(); });
+const sellValue = id => Math.max(1, Math.floor(price(BY_ID[id]) * CONFIG.sellRate));
+function showCard(id, o = {}) {
+  const mine = !!run && run.phase === 'hub' && owned().has(id), n = run ? run.roster.length + run.bench.length : 0, canSell = mine && n > 9;
+  openModal(cardHTML(id, o) + `<div class="row-actions">${mine ? `<button class="btn" id="sellBtn" ${canSell ? '' : 'disabled'}>Sell for $${sellValue(id)}</button>` : ''}<button class="btn ghost" data-close>Close</button></div>`
+    + (mine && !canSell ? `<p class="small">Selling opens up once you have more than 9 players. You have ${n}.</p>` : ''));
+  if (canSell) $('sellBtn').onclick = () => confirmSell(id);
+}
+function confirmSell(id) {
+  const v = sellValue(id), starter = run.roster.includes(id), nm = BY_ID[id].name;
+  let sub = null, spot = '', slot = 0;
+  if (starter) { spot = POS[run.pos[id]]; slot = run.order.indexOf(id) + 1; sub = run.bench.slice().sort((a, b) => FIT[spot](BY_ID[b]) - FIT[spot](BY_ID[a]))[0]; }
+  const augsOn = run.augments.filter(a => a.on === id && AUG[a.id]).map(a => AUG[a.id].name);
+  const cardsOn = run.cards.filter(c => c.on === id).map(c => CARD[c.id].name);
+  openModal(`<h3>Sell ${esc(nm)}?</h3>
+    <div class="econ" style="margin:12px 0"><div class="eb"><b>$${run.money}</b><small>bank now</small></div><div class="eb"><b>+$${v}</b><small>sale</small></div><div class="eb"><b>$${run.money + v}</b><small>bank after</small></div></div>
+    ${starter ? `<p>${esc(BY_ID[sub].name)} comes off the bench to play ${spot} and bat ${slot}${['st', 'nd', 'rd'][slot - 1] || 'th'}.</p>` : ''}
+    ${augsOn.length ? `<p class="small">These boosts leave with ${esc(nm)}: ${augsOn.map(esc).join(', ')}.</p>` : ''}
+    ${cardsOn.length ? `<p class="small">${cardsOn.map(esc).join(', ')} goes idle until you pick a new player for it.</p>` : ''}
+    <p class="small">This can't be undone.</p>
+    <div class="row-actions"><button class="btn" id="sellYes">Sell for $${v}</button><button class="btn ghost" data-close>Cancel</button></div>`);
+  $('sellYes').onclick = () => {
+    run.money += v;
+    if (starter) benchIn(sub, id);
+    run.bench.splice(run.bench.indexOf(id), 1);
+    delete run.perm[id];
+    run.cards.forEach(c => { if (c.on === id) c.on = null; });
+    closeModal(); save(); renderHub();
+  };
+}
+function pickPlayer(title, sub, statKeys, cb, block) {
+  const everyone = [...run.order.length ? run.order : run.roster, ...run.bench];
+  openModal(`<h3>${esc(title)}</h3><p class="small">${esc(sub)}</p><table class="roster">${everyone.map(pid => { const p = S(pid), why = block ? block(pid) : '';
+    return `<tr><td><img class="face" src="${FACE(pid)}" width="32" height="32" alt="" data-tip="${pid}"></td><td><span data-tip="${pid}">${esc(BY_ID[pid].name)}</span>${block ? boostSlots(pid, block.dup) : ''}</td><td class="small">${statKeys.map(k => `${STAT_LABEL[k]} ${p[k]}`).join(', ')}</td><td><button class="btn sm" data-to="${pid}" ${why ? 'disabled' : ''}>Choose</button></td></tr>`; }).join('')}</table>
+    <div class="row-actions"><button class="btn ghost" data-close>Back</button></div>`);
+  $('modalInner').querySelectorAll('[data-to]').forEach(b => b.onclick = () => { closeModal(); cb(+b.dataset.to); });
+}
+
+/* ---- team name ---- */
+function nameSelectsHTML() {
+  const opt = (obj, cur) => Object.entries(obj).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${k}" ${+k === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const mlb = run.team.noun > 121;
+  const sw = v => ALL_COLOR[v] ? `background:${ALL_COLOR[v][1]}` : 'background:repeating-linear-gradient(45deg,#888 0 4px,#444 4px 8px)';
+  const opts = obj => Object.entries(obj).map(([n, [nm]]) => `<option value="${n}" ${+n === k0 ? 'selected' : ''}>${nm}</option>`).join('');
+  let k0 = 0;
+  const col = (k, label) => { k0 = run.team[k]; return `<span class="gsw" style="${sw(run.team[k])}"></span><select data-name="${k}" aria-label="${label}">${mlb ? `<option value="0" ${!run.team[k] ? 'selected' : ''}>Team colors</option>` : ''}<optgroup label="Backyard">${opts(TEAM_COLOR)}</optgroup><optgroup label="Pro">${opts(PRO_COLOR)}</optgroup></select>`; };
+  return `<select data-name="adj" aria-label="Team adjective">${opt(ADJ, run.team.adj)}</select><select data-name="noun" aria-label="Team name">${opt(NOUN, run.team.noun)}</select>${col('c1', 'Primary color')}${col('c2', 'Secondary color')}`;
+}
+function wireNameSelects(root, after) {
+  root.querySelectorAll('[data-name]').forEach(s => s.onchange = () => {
+    const k = s.dataset.name, v = +s.value, wasMLB = run.team.noun > 121;
+    run.team[k] = v;
+    if (k === 'noun') {   // MLB names start in their own colors; backyard names need a real color
+      if (v > 121 && !wasMLB) { run.team.c1 = 0; run.team.c2 = 0; }
+      if (v <= 121) { if (!run.team.c1) run.team.c1 = 1 + rnd(9); if (!run.team.c2) run.team.c2 = 1 + rnd(9); }
+    }
+    save(); root.innerHTML = nameSelectsHTML(); wireNameSelects(root, after); after && after();
+  });
+}
+function renderName() {
+  topbar();
+  $('nameSelects').innerHTML = nameSelectsHTML();
+  wireNameSelects($('nameSelects'));
+  $('nameGo').onclick = () => { run.phase = 'draft'; makeDraftRound(); save(); renderDraft(); };
+  show('scr-name');
+}
+
+/* ======================================================================
+   DRAFT
+   ====================================================================== */
+function renderDraft() {
+  topbar();
+  const r = run.draft.round;
+  $('draftTitle').textContent = `Pick ${r + 1} of 9`;
+  $('draftLede').textContent = '';
+  $('draftCards').innerHTML = run.draft.cands.map(id => cardHTML(id, { compact: true })).join('');
+  $('draftCards').querySelectorAll('.pcard').forEach(b => b.onclick = () => {
+    const id = +b.dataset.id;
+    run.roster.push(id); placeDrafted(id); run.draft.round++;
+    if (run.draft.round >= 9) { run.order = autoOrder(run.roster); startRound(); }
+    else { makeDraftRound(); save(); renderDraft(); }
+  });
+  $('draftTeamName').textContent = teamName();
+  renderDiamond($('draftDiamond'), PARK_DRAFT);
+  const byPos = [...run.roster].sort((a, b) => run.pos[a] - run.pos[b]);
+  $('draftList').innerHTML = `<tr><th>Pos</th><th>Player</th><th>Pow</th><th>Con</th><th>Vis</th><th data-tiptext="speed">Spd</th><th>Arm</th><th>Crd</th><th>Ht</th><th>Pit</th></tr>` +
+    byPos.map(id => { const p = BY_ID[id]; return `<tr><td class="pos">${POS[run.pos[id]]}</td><td>${esc(shortName(id))}</td><td>${p.swing}</td><td>${p.hitting}</td><td>${p.eye}</td><td>${p.speed} <span class="tier">T${p.t}</span></td><td>${p.arm}</td><td>${p.coordination}</td><td>${p.height}</td><td>${card.pitch(p)}</td></tr>`; }).join('');
+  show('scr-draft');
+}
+const PARK_DRAFT = 1;
+
+/* ======================================================================
+   REEL
+   ====================================================================== */
+function tileHTML(o) { return `<div class="rtile ${o.tee ? 'bonus' : 'i' + o.innings}"><img src="${FIELD_IMG(o.field)}" alt=""><div class="cap"><span>${PARK[o.field]}</span><span class="inn">${o.innings}<small>inn</small></span></div></div>`; }
+function renderReel() {
+  topbar();
+  const n = run.next, outs = reelOutcomes();
+  $('reelTitle').textContent = `Game ${run.game}: where and how long?`;
+  $('reveal').innerHTML = ''; $('reelGo').hidden = true; $('reelReroll').hidden = true;
+  const TILE = 198, WIN_AT = 52, strip = [];
+  for (let i = 0; i < WIN_AT + 6; i++) strip.push(Math.random() * (outs.length + 1) < 1.5 ? { field: pick(CONFIG.fields), innings: 3, tee: true } : pick(outs));
+  strip[WIN_AT] = { field: n.field, innings: n.innings, tee: n.tee };
+  const reel = $('reel');
+  reel.innerHTML = strip.map(tileHTML).join('');
+  reel.style.transition = 'none'; reel.style.transform = 'translateX(0)';
+  show('scr-reel');
+  const wrapW = reel.parentElement.clientWidth, jitter = (Math.random() - 0.5) * (TILE - 50);
+  const target = -(WIN_AT * TILE + 94 - wrapW / 2 + jitter);
+  const DUR = (matchMedia('(prefers-reduced-motion: reduce)').matches || run.reelSeen) ? 0 : 3800;
+  requestAnimationFrame(() => requestAnimationFrame(() => { reel.style.transition = DUR ? `transform ${DUR}ms cubic-bezier(.06,.62,.1,1)` : 'none'; reel.style.transform = `translateX(${target}px)`; }));
+  let last = -1; const t0 = performance.now();
+  const loop = () => {
+    const m = new DOMMatrixReadOnly(getComputedStyle(reel).transform), idx = Math.floor((-m.m41 + wrapW / 2) / TILE);
+    if (idx !== last) { if (last >= 0) Sound.tick(1100 + rnd(500)); last = idx; }
+    if (performance.now() - t0 < DUR + 100) requestAnimationFrame(loop);
+  };
+  if (DUR) requestAnimationFrame(loop);
+  setTimeout(() => {
+    reel.children[WIN_AT].classList.add('win');
+    if (DUR) { Sound.tick(523, 0.18); setTimeout(() => Sound.tick(784, 0.3), 140); }
+    $('reveal').innerHTML = `<div class="what">${n.tee ? 'Bonus: tee ball at ' : ''}${PARK[n.field]}, ${n.innings} innings</div>
+      <div class="sub">${n.rival ? 'Rivalry game: stronger lineup, bonus payout. ' : ''}${DIFF[n.difficulty]} CPU${n.boost ? `, their hitters +${n.boost}` : ''}</div>`;
+    $('reelGo').hidden = false; $('reelGo').focus();
+    $('reelReroll').hidden = false;
+    $('reelReroll').textContent = `Spin again ($${run.fieldRerollCost})`;
+    $('reelReroll').disabled = run.money < run.fieldRerollCost;
+    run.reelSeen = true; save();
+  }, DUR + 150);
+  $('reelGo').onclick = () => { run.phase = 'hub'; save(); renderHub(); };
+  $('reelReroll').onclick = () => {
+    if (run.money < run.fieldRerollCost) return;
+    run.money -= run.fieldRerollCost; run.fieldRerollCost += CONFIG.fieldReroll.step;
+    applyRoll(rollGame()); run.reelSeen = false; save(); renderReel();
+  };
+}
+
+/* ======================================================================
+   CLUBHOUSE
+   ====================================================================== */
+let sel = null;
+function lineupWarnings() { return []; }
+function lineupWarningsOld() {
+  const L = gameLayers(), out = [];
+  for (const id of run.roster) { if (run.pos[id] == null) continue; const w = posWarn(finalStats(id, L), POS[run.pos[id]]); if (w) out.push(`${BY_ID[id].name}: ${w}`); }
+  return out;
+}
+function chipHTML(id, where, L) {
+  const w = '';
+  return `<button class="chip ${BY_ID[id].kind === 'pro' ? 'pro' : ''} ${w ? 'bad' : ''} ${sel === id ? 'sel' : ''}" data-chip="${id}" data-tip="${id}">
+    <img class="face" src="${FACE(id)}" alt=""><span class="nm">${esc(shortName(id))}</span></button>`;
+}
+function renderDiamond(el, field) {
+  const L = gameLayers();
+  el.style.backgroundImage = `url(${FIELD_IMG(field)})`;
+  el.innerHTML = POS.map((ps, k) => {
+    const id = run.roster.find(x => run.pos[x] === k), [x, y] = SLOT_XY[ps];
+    return `<div class="slot" style="left:${x}%;top:${y}%" data-drop="pos:${k}"><span class="lbl">${ps}</span>${id != null ? chipHTML(id, 'field', L) : '<div class="empty"></div>'}</div>`;
+  }).join('');
+}
+function renderHub() {
+  topbar();
+  const n = run.next, L = gameLayers();
+  $('hubName').innerHTML = nameSelectsHTML();
+  wireNameSelects($('hubName'));
+  renderDiamond($('diamond'), n.field);
+  $('bench').innerHTML = Array.from({ length: CONFIG.benchSize }, (_, i) => {
+    const id = run.bench[i];
+    return `<div class="bslot" data-drop="bench:${i}">${id != null ? chipHTML(id, 'bench', L) : '<div class="bench-empty"></div>'}</div>`;
+  }).join('');
+  $('benchCount').textContent = `${run.bench.length} of ${CONFIG.benchSize}`;
+  $('order').innerHTML = run.order.map((id, i) => {
+    const p = finalStats(id, L);
+    return `<div class="orow" data-drop="ord:${i}" data-orow="${id}"><span class="n">${i + 1}</span><img class="face" src="${FACE(id)}" alt="">
+      <div class="who"><b>${esc(p.name)}</b><small>${POS[run.pos[id]]}, pow ${p.swing}, con ${p.hitting}, spd ${p.speed} (T${p.t}), vis ${p.eye}</small></div></div>`;
+  }).join('');
+  $('lineupWarn').innerHTML = lineupWarnings().map(w => `<div>${esc(w)}</div>`).join('');
+  const slotTxt = run.slotBuffs.length ? run.slotBuffs : [];
+
+  $('oppBox').innerHTML = `<h3>Game ${run.game}${n.rival ? ' <span class="boss">Rivalry</span>' : ''}</h3>
+    <img class="oppfield" src="${FIELD_IMG(n.field)}" alt="">
+    <dl class="facts"><dt>Team</dt><dd>${esc(cpuTeamName(n))}</dd><dt>Park</dt><dd>${PARK[n.field]}${n.tee ? ', tee ball' : ''}</dd><dt>Length</dt><dd>${n.innings} innings, mercy at ${CONFIG.mercy}</dd>
+    <dt>CPU</dt><dd>${DIFF[n.difficulty]}${n.boost ? `, hitters +${n.boost}` : ''}</dd></dl>
+    <div class="chips" style="margin-top:8px">${n.order.map(id => `<button class="pill" data-card="${id}" data-tip="${id}">${POS[n.pos[id]]} ${esc(BY_ID[id].name)}</button>`).join('')}</div>
+    <div class="row-actions"><button class="btn big" id="playBtn">Play ball</button></div>`;
+  $('oppBox').querySelectorAll('[data-card]').forEach(b => b.onclick = () => showCard(+b.dataset.card, { boosted: true }));
+  $('playBtn').onclick = startGame;
+
+  renderShop();
+  renderEcon();
+
+  const room = run.bench.length < CONFIG.benchSize;
+  $('tradeBlock').innerHTML = run.tradeBlock.length ? run.tradeBlock.map(id => {
+    const p = BY_ID[id], pr = price(p);
+    return `<div class="row"><img class="face" src="${FACE(id)}" alt=""><div class="who" data-card="${id}"><b>${esc(p.name)}</b>
+      <small>Bat ${card.bat(p)}, pow ${p.swing}, con ${p.hitting}, spd ${p.speed} (T${p.t}), arm ${p.arm}, ht ${p.height}</small><div class="tags" style="margin:3px 0 0">${tagsHTML(p)}</div></div>
+      <span class="price">$${pr}</span><div class="acts"><button class="btn sm" data-sign="${id}" ${room && run.money >= pr ? '' : 'disabled'}>Sign</button><button class="btn sm ghost" data-swap="${id}">Swap</button></div></div>`;
+  }).join('') : '<p class="small">Empty. Refresh it.</p>';
+  $('tradeBlock').querySelectorAll('[data-card]').forEach(w => w.onclick = () => showCard(+w.dataset.card, { price: price(BY_ID[+w.dataset.card]) }));
+  $('tradeBlock').querySelectorAll('[data-sign]').forEach(b => b.onclick = () => {
+    const id = +b.dataset.sign, pr = price(BY_ID[id]);
+    if (run.money < pr || run.bench.length >= CONFIG.benchSize) return;
+    run.money -= pr; run.bench.push(id); run.tradeBlock = run.tradeBlock.filter(x => x !== id); save(); renderHub();
+  });
+  $('tradeBlock').querySelectorAll('[data-swap]').forEach(b => b.onclick = () => openSwap(+b.dataset.swap));
+  $('rerollBtn').textContent = `Refresh the block ($${run.rerollCost})`;
+  $('rerollBtn').disabled = run.money < run.rerollCost;
+  $('rerollBtn').onclick = () => { if (run.money < run.rerollCost) return; run.money -= run.rerollCost; run.rerollCost++; refreshTradeBlock(); save(); renderHub(); };
+  show('scr-hub');
+}
+function renderEcon() {
+  const e = CONFIG.econ, n = run.next, int = interestNow(), maxed = int >= run.interestCap;
+  const next = (int + 1) * e.interestPer, pay = m => winPay(n) + m * e.perRun + int + (n && n.rival ? e.rivalryBonus : 0);
+  const sellAll = [...run.roster, ...run.bench].length > 9;
+  $('econBox').innerHTML = `<h3>Econ</h3>
+    <div class="econ">
+      <div class="eb"><b>$${run.money}</b><small>bank</small></div>
+      <div class="eb"><b>+$${int}</b><small>interest on a win</small></div>
+      <div class="eb"><b>${maxed ? 'Max' : '$' + next}</b><small>${maxed ? `interest capped at $${run.interestCap}` : `bank this for +$${int + 1}`}</small></div>
+    </div>
+    <div class="paygrid"><span>Win by 1</span><b>$${pay(1)}</b><span>Win by 5</span><b>$${pay(5)}</b><span>Win by ${CONFIG.mercy} (mercy)</span><b>$${pay(CONFIG.mercy)}</b></div>
+    <p class="small">A win pays $${winPay(n)} (${n ? n.innings : 3} innings: $6 for 2, $5 for 3, $4 for 4${n && n.tee ? ', +$1 tee ball' : ''}), plus $${e.perRun} per run of margin, plus $1 interest per $${e.interestPer} banked (max $${run.interestCap})${n && n.rival ? `, plus $${e.rivalryBonus} for the rivalry` : ''}. A loss ends the run.
+    Cards sell for half. Players sell for half ${sellAll ? '(click a player to sell)' : 'once you have more than 9'}.</p>`;
+}
+function jokerHTML(cid, opts = {}) {
+  const C = CARD[cid];
+  return `<div class="joker ${C.rarity}">${opts.tag ? '<span class="ck">Card</span>' : ''}<span class="rr">${RAR_LABEL[C.rarity]}</span><h4>${esc(C.name)}</h4><div class="art">${cardArt(C)}</div><p>${esc(C.text)}</p>${opts.on != null ? `<span class="on">On ${esc(BY_ID[opts.on].name)}</span>` : ''}</div>`;
+}
+function cardArt(C) {
+  const ab = { swing: 'POW', hitting: 'CON', eye: 'VIS', speed: 'SPD', arm: 'ARM', coordination: 'CRD', stamina: 'STA' };
+  const parts = [];
+  for (const [k, v] of Object.entries(C.d || {})) parts.push(`${v > 0 ? '+' : ''}${v} ${ab[k] || k}`);
+  for (const [k, v] of Object.entries(C.min || {})) parts.push(`${v} ${ab[k] || k}`);
+  if (C.cond) { for (const [k, v] of Object.entries(C.cond.d)) parts.push(`+${v} ${ab[k] || k}`); parts.push(`<small>${esc(COND[C.cond.c].label)}</small>`); }
+  if (C.freeShop) parts.push('Free refresh');
+  if (C.freePu) parts.push('+1 power-up');
+  if (C.perKid) parts.push('<small>per backyard kid</small>');
+  const who = { opp: 'Them', of: 'OF', slots: 'Bat ' + (C.slots || []).map(x => x + 1).join('-'), minspeed: 'Slowest', pick: '1 player', team: 'Team', pos: POS[C.pos] }[C.who] || '';
+  return `${who ? `<div>${who}</div>` : ''}<div>${parts.join('<br>')}</div>`;
+}
+function renderShop() {
+  const full = run.cards.length >= CONFIG.cardSlots;
+  $('shopCards').innerHTML = Array.from({ length: CONFIG.shopSlots }, (_, i) => {
+    const it = run.shop[i];
+    if (!it) return '<div class="soldslot">Sold</div>';
+    const pr = shopPrice(it), st = it.type === 'card' ? cardStatus(it.id) : { kind: 'new' };
+    const can = run.money >= pr && st.kind !== 'owned' && !(it.type === 'card' && full && st.kind !== 'upgrade');
+    const label = st.kind === 'owned' ? 'Owned' : st.kind === 'upgrade' ? `Upgrade $${pr}` : `Buy $${pr}`;
+    const btn = `<button class="btn sm" data-buy="${i}" ${can ? '' : 'disabled'} ${st.kind === 'upgrade' ? `title="Trades in your ${RAR_LABEL[CARD[st.old.id].rarity]} ${esc(CARD[st.old.id].name)} (worth $${cardSell(st.old.id)})"` : ''}>${label}</button>`;
+    if (it.type === 'card') return `<div class="sitem">${jokerHTML(it.id, { tag: true })}${st.kind === 'upgrade' ? `<small class="small">Replaces your ${RAR_LABEL[CARD[st.old.id].rarity].toLowerCase()}</small>` : ''}${btn}</div>`;
+    if (it.type === 'aug') { const a = AUGMENTS.find(x => x.id === it.id); return `<div class="sitem"><div class="ticket"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div>${btn}</div>`; }
+    return `<div class="sitem"><div class="putile"><img class="${it.id === 'juice' ? 'j' : ''}" src="${PU_ICON ? PU_ICON[it.id] : ''}" alt=""><small>${esc(puLabel(it.id))}</small></div>${btn}</div>`;
+  }).join('');
+  $('shopCards').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buyShop(+b.dataset.buy));
+  $('cardCount').textContent = `${run.cards.length} of ${CONFIG.cardSlots}`;
+  if (run.shopRerollCost == null) run.shopRerollCost = CONFIG.shopReroll.base;
+  const freeShop = run.freeShop > 0;
+  $('shopRefresh').textContent = freeShop ? `Refresh the shop (free, ${run.freeShop} left)` : `Refresh the shop ($${run.shopRerollCost})`;
+  $('shopRefresh').disabled = !freeShop && run.money < run.shopRerollCost;
+  $('shopRefresh').onclick = () => {
+    if (run.freeShop > 0) run.freeShop--;
+    else { if (run.money < run.shopRerollCost) return; run.money -= run.shopRerollCost; run.shopRerollCost += CONFIG.shopReroll.step; }
+    stockShop(); save(); renderHub();
+  };
+  const act = new Set(activeCards()), own = owned();
+  $('myCards').innerHTML = run.cards.map((c, i) => {
+    const sell = cardSell(c.id), C = CARD[c.id], idle = C.who === 'pick' && (c.on == null || !own.has(c.on));
+    return `<div class="sitem ${act.has(c) ? '' : 'dead'}">${jokerHTML(c.id, { on: idle ? null : c.on })}${act.has(c) ? '' : '<small class="small">Not stacking: your better one counts</small>'}${idle ? `<button class="btn sm" data-assign="${i}">Pick a player</button>` : ''}<button class="btn sm ghost" data-sell="${i}">Sell $${sell}</button></div>`;
+  }).join('') + Array.from({ length: CONFIG.cardSlots - run.cards.length }, () => '<div class="sitem"><div class="joker emptyslot">Empty slot</div></div>').join('');
+  $('myCards').querySelectorAll('[data-sell]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.sell, c = run.cards[i];
+    run.money += cardSell(c.id);
+    run.cards.splice(i, 1); save(); renderHub();
+  });
+  $('myCards').querySelectorAll('[data-assign]').forEach(b => b.onclick = () => {
+    const c = run.cards[+b.dataset.assign], C = CARD[c.id];
+    pickPlayer(`${C.name}: who gets it?`, C.text, Object.keys({ ...C.d, ...C.min }), pid => { c.on = pid; save(); renderHub(); });
+  });
+}
+function buyShop(i) {
+  const it = run.shop[i], pr = shopPrice(it);
+  if (!it || run.money < pr) return;
+  if (it.type === 'card' && cardStatus(it.id).kind === 'owned') return;
+  const done = () => { run.money -= pr; run.shop[i] = null; save(); renderHub(); };
+  if (it.type === 'card') return buyCard(it.id, done);
+  if (it.type === 'pu') { run.pu[it.id] = (run.pu[it.id] || 0) + 1; return done(); }
+  applyAugment(it.id, done);
+}
+function buyCard(cid, done) {
+  const C = CARD[cid], st = cardStatus(cid);
+  if (st.kind === 'owned') return;
+  if (st.kind === 'upgrade') { run.cards[run.cards.indexOf(st.old)] = { id: cid, on: st.old.on }; return done(); }
+  if (run.cards.length >= CONFIG.cardSlots) return;
+  const finish = on => { run.cards.push({ id: cid, on }); done(); };
+  if (C.who === 'pick') pickPlayer(`${C.name}: who gets it?`, C.text, Object.keys({ ...C.d, ...C.min }), finish);
+  else finish();
+}
+// field<->field swaps positions, bench<->field swaps a player in, batting rows reorder
+function doMove(id, target) {
+  const [kind, raw] = target.split(':'), k = +raw, onField = run.roster.includes(id);
+  if (kind === 'pos') {
+    const other = run.roster.find(x => run.pos[x] === k);
+    if (onField) { if (other != null && other !== id) run.pos[other] = run.pos[id]; run.pos[id] = k; }
+    else if (other != null) benchIn(id, other);
+  } else if (kind === 'bench') {
+    const other = run.bench[k];
+    if (onField && other != null) benchIn(other, id);
+    else if (!onField && other != null && other !== id) { const i = run.bench.indexOf(id); [run.bench[i], run.bench[k]] = [run.bench[k], run.bench[i]]; }
+    else if (onField && other == null) { rerender(); return; }
+  } else if (kind === 'ord') {
+    if (!onField) benchIn(id, run.order[k]);
+    else { const i = run.order.indexOf(id); run.order.splice(i, 1); run.order.splice(k, 0, id); }
+  }
+  save(); rerender();
+}
+const rerender = () => run.phase === 'draft' ? renderDraft() : renderHub();
+function benchIn(benchId, fieldId) {
+  run.bench[run.bench.indexOf(benchId)] = fieldId;
+  run.roster[run.roster.indexOf(fieldId)] = benchId;
+  if (run.order.includes(fieldId)) run.order[run.order.indexOf(fieldId)] = benchId;
+  run.pos[benchId] = run.pos[fieldId]; delete run.pos[fieldId];
+}
+(() => {   // pointer drag for mouse and touch
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    const src = e.target.closest('[data-chip],[data-orow]');
+    if (!src || !(src.closest('#scr-hub') || src.closest('#scr-draft'))) return;
+    drag = { id: +(src.dataset.chip || src.dataset.orow), x: e.clientX, y: e.clientY, src, ghost: null, over: null };
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+      const img = document.createElement('img'); img.src = FACE(drag.id); img.className = 'face ghost-drag';
+      img.style.width = img.style.height = '64px'; document.body.appendChild(img); drag.ghost = img;
+    }
+    drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+    const t = document.elementFromPoint(e.clientX, e.clientY), d = t && t.closest('[data-drop]');
+    if (drag.over && drag.over !== d) drag.over.classList.remove('over');
+    if (d) d.classList.add('over'); drag.over = d;
+    e.preventDefault();
+  });
+  document.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (d.over) d.over.classList.remove('over');
+    if (d.ghost) { d.ghost.remove(); if (d.over) doMove(d.id, d.over.dataset.drop); return; }
+    if (sel === d.id) { sel = null; rerender(); showCard(d.id, { boosted: true }); return; }
+    if (sel != null) { const tgt = d.src.closest('[data-drop]'), a = sel; sel = null; if (tgt) doMove(a, tgt.dataset.drop); else rerender(); return; }
+    sel = d.id; rerender();
+  });
+  // tapping an empty slot moves the selected player there
+  document.addEventListener('click', e => {
+    if (sel == null) return;
+    const slot = e.target.closest('[data-drop]');
+    if (slot && !slot.querySelector('[data-chip]') && (slot.closest('#scr-hub') || slot.closest('#scr-draft'))) { const a = sel; sel = null; doMove(a, slot.dataset.drop); }
+  });
+})();
+function openSwap(newId) {
+  const np = BY_ID[newId], mine = [...run.order, ...run.bench];
+  const rows = mine.map(id => {
+    const credit = Math.floor(price(BY_ID[id]) * CONFIG.sellRate), cost = Math.max(0, price(np) - credit);
+    const where = run.roster.includes(id) ? POS[run.pos[id]] : 'Bench';
+    return `<tr><td>${where}</td><td>${esc(BY_ID[id].name)}</td><td class="n">$${cost}</td><td><button class="btn sm" data-out="${id}" ${run.money < cost ? 'disabled' : ''}>Swap</button></td></tr>`;
+  }).join('');
+  openModal(`<h3>Bring in ${esc(np.name)}</h3>${cardHTML(newId, { price: price(np) })}
+    <table class="roster" style="margin-top:10px"><tr><th>Spot</th><th>Player</th><th class="n">Cost</th><th></th></tr>${rows}</table>
+    <div class="row-actions"><button class="btn ghost" data-close>Cancel</button></div>`);
+  $('modalInner').querySelectorAll('[data-out]').forEach(b => b.onclick = () => {
+    const out = +b.dataset.out, credit = Math.floor(price(BY_ID[out]) * CONFIG.sellRate), cost = Math.max(0, price(np) - credit);
+    if (run.money < cost) return;
+    run.money -= cost;
+    if (run.roster.includes(out)) { run.roster[run.roster.indexOf(out)] = newId; run.order[run.order.indexOf(out)] = newId; run.pos[newId] = run.pos[out]; delete run.pos[out]; }
+    else run.bench[run.bench.indexOf(out)] = newId;
+    delete run.perm[out];
+    run.cards.forEach(c => { if (c.on === out) c.on = newId; });
+    run.tradeBlock = run.tradeBlock.filter(x => x !== newId);
+    closeModal(); save(); renderHub();
+  });
+}
+
+/* ======================================================================
+   GAME HANDOFF + RESULTS
+   ====================================================================== */
+function startGame() {
+  const n = run.next;
+  run.seq++;
+  const mine = Array(9).fill(0), theirs = Array(9).fill(0);
+  run.roster.forEach(id => mine[run.pos[id]] = id); n.ids.forEach(id => theirs[n.pos[id]] = id);
+  // stat changes: deltas where possible (keeps the game's own sibling bonuses), exact values for set/min effects
+  const L = gameLayers({ combos: false }), mods = [];
+  const cpu = cpuTeam(n);
+  for (const id of [...run.roster, ...n.ids]) {
+    const m = L[id]; if (!m) continue;
+    const f = finalStats(id, L), keys = new Set([...Object.keys(m.d), ...Object.keys(m.set), ...Object.keys(m.min)]);
+    for (const k of keys) {
+      if (COL[k] == null) continue;
+      const exact = k in m.set || k in m.min;
+      const v = exact ? f[k] : f[k] - BY_ID[id][k];
+      if (!exact && !v) continue;
+      mods.push([id, COL[k], v, exact ? 1 : 0]);
+    }
+  }
+  for (const c of activeCards()) if (CARD[c.id].freePu) for (let i = 0; i < CARD[c.id].freePu; i++) { const k = pick(PU_KEYS); run.pu[k] = (run.pu[k] || 0) + 1; }
+  const sent = Object.fromEntries(PU_KEYS.map(k => [k, Math.min(k === 'juice' ? 10 : 9, run.pu[k] || 0)]));
+  const st = settings;
+  let ini = `[boot]\nskipintro=1\n[setup]\nseq=${run.seq}\nhalfinnings=${n.innings * 2}\ndifficulty=${n.difficulty}\nfield=${n.field}\nnoerrors=0\nhotcold=0\nmercy=${CONFIG.mercy}\nautoplay=${st.autoplay ? 1 : 0}\n`;
+  ini += `[audio]\nnomusic=${st.music ? 0 : 1}\nnocommentary=${st.commentary ? 0 : 1}\nnogooch=${st.gooch ? 0 : 1}\nnobackground=${st.crowd ? 0 : 1}\nnoplayertalking=${st.playerTalking ? 0 : 1}\nnoplayerchatter=${st.playerChatter ? 0 : 1}\n`;
+  ini += `[name]\nadj=${run.team.adj}\nnoun=${run.team.noun}\ncolor1=${run.team.c1}\ncolor2=${run.team.c2}\nbasic1=${basicOf(run.team.c1)}\nbasic2=${basicOf(run.team.c2)}\ncpunoun=${cpu.noun}\ncpuadj=${cpu.adj}\ncpuc1=${cpu.c1}\ncpuc2=${cpu.c2}\n`;
+  ini += `[powerups]\n` + PU_KEYS.map(k => `${k}=${sent[k]}\n`).join('');
+  ini += `[team]\n`;
+  for (let i = 0; i < 9; i++) ini += `u${i}=${mine[i]}\nub${i}=${run.order[i]}\nc${i}=${theirs[i]}\ncb${i}=${n.order[i]}\n`;
+  ini += `[mods]\nn=${mods.length}\n` + mods.map(([k, c, d, s], i) => `k${i}=${k}\nc${i}=${c}\nd${i}=${d}\ns${i}=${s}\n`).join('');
+  const conds = condList().slice(0, 64), hs = headStarters().slice(0, 10);
+  ini += `[cond]\nn=${conds.length}\n` + conds.map((x, i) => `k${i}=${x.k}\nc${i}=${COND[x.c].code}\np${i}=${x.d.swing || 0}\nh${i}=${x.d.hitting || 0}\n`).join('');
+  ini += `[headstart]\nn=${hs.length}\n` + hs.map((k, i) => `k${i}=${k}\n`).join('');
+  const spdPer = c => conds.filter(x => x.c === c).reduce((a, x) => a + (x.d.speed || 0), 0);
+  ini += `[teamspeed]\ndouble=${spdPer('doubles')}\ntriple=${spdPer('triples')}\n`;
+  run.pending = { seq: run.seq, sent }; run.phase = 'playing'; save();
+  Panel.start(sent, conds, hs);
+  Engine.play(ini, run.seq);
+}
+const PU_RESULT = { alum: 'pu1', line: 'pu2', under: 'pu3', cbunt: 'pu4', juice: 'pu5' };
+function onResult(res) {
+  const n = run.next, us = res.user, them = res.cpu, diff = us - them, won = us > them;
+  // power-ups: what stayed home + what came back unused
+  const sent = (run.pending && run.pending.sent) || {};
+  for (const k of PU_KEYS) { const back = +(res[PU_RESULT[k]] || 0); run.pu[k] = Math.max(0, (run.pu[k] || 0) - (sent[k] || 0)) + Math.min(back, sent[k] || 0); }
+  const box = [];
+  for (let i = 0; i < 9; i++) {
+    const a = (res['a' + i] || '').split(',').map(Number), b = (res['b' + i] || '').split(',').map(Number);
+    if (!a.length || !a[0]) continue;
+    const s = { id: a[0], AB: a[1], H: a[2], K: a[3], BB: a[6], HR: a[11], SB: a[12], R: b[0], E: b[2], RBI: b[3] };
+    box.push(s);
+    const t = run.totals[s.id] || (run.totals[s.id] = { G: 0, AB: 0, H: 0, HR: 0, RBI: 0, R: 0, SB: 0, K: 0, BB: 0 });
+    t.G++; for (const k of ['AB', 'H', 'HR', 'RBI', 'R', 'SB', 'K', 'BB']) t[k] += s[k] || 0;
+  }
+  run.pending = null;
+  // the game ends either mid-inning (walk-off, mercy) or right after the last half closes, when the half counter has already moved on
+  const halves = res.halves || 0, len = res.len || n.innings * 2;
+  const played = Math.max(1, halves >= len ? Math.round(len / 2) : Math.ceil((halves + 1) / 2)), mercy = Math.abs(diff) >= CONFIG.mercy;
+  run.history.push({ g: run.game, us, them, park: n.field, innings: played });
+  $('resTitle').textContent = won ? (mercy ? 'Mercy rule win' : n.rival ? 'Rivalry game won' : 'Win') : (mercy ? 'Mercy rule loss' : 'Loss');
+  $('resScore').innerHTML = `<span class="big num ${won ? 'w' : 'l'}">${us}</span><span class="display" style="font-size:36px">to</span><span class="big num">${them}</span><span class="small">${PARK[n.field]}, ${played} inning${played === 1 ? '' : 's'}${played > n.innings ? ' (extras)' : ''}${n.tee ? ', tee ball' : ''}</span>`;
+  $('boxTbl').innerHTML = `<tr><th>Player</th><th class="n">AB</th><th class="n">H</th><th class="n">HR</th><th class="n">RBI</th><th class="n">R</th><th class="n">BB</th><th class="n">K</th><th class="n">SB</th></tr>` +
+    box.map(s => `<tr><td>${esc(BY_ID[s.id] ? BY_ID[s.id].name : s.id)}</td>${['AB', 'H', 'HR', 'RBI', 'R', 'BB', 'K', 'SB'].map(k => `<td class="n">${s[k] || 0}</td>`).join('')}</tr>`).join('');
+  if (won) {
+    const e = CONFIG.econ, base = winPay(n), runs = Math.max(0, diff) * e.perRun, interest = Math.min(run.interestCap, Math.floor(run.money / e.interestPer)), rival = n.rival ? e.rivalryBonus : 0;
+    // Sacrifice: $ per out the chosen player made (at bats without a hit)
+    let sac = 0;
+    for (const a of run.augments) { const A = AUG[a.id]; if (!A || !A.sacrifice) continue; const st = box.find(x => x.id === a.on); if (st) sac += A.sacrifice * Math.max(0, (st.AB || 0) - (st.H || 0)); }
+    const total = base + runs + interest + rival + sac;
+    run.money += total; run.wins++; run.game++; meta.best = Math.max(meta.best, run.wins);
+    $('payBox').innerHTML = `<span>Win, ${n.innings} innings${n.tee ? ' + tee ball' : ''}</span><span class="num">$${base}</span><span>Run differential +${diff}</span><span class="num">$${runs}</span><span>Interest</span><span class="num">$${interest}</span>${rival ? `<span>Rivalry bonus</span><span class="num">$${rival}</span>` : ''}${sac ? `<span>Sacrifice</span><span class="num">$${sac}</span>` : ''}<span class="t">Total</span><span class="t num">$${total}</span>`;
+    $('resNext').textContent = 'Pick a boost';
+    run.phase = 'augment'; run.augOffer = offerAugments();
+    run.augRerollCost = CONFIG.augReroll.base;
+    run.freeRerolls = 0;
+    $('resNext').onclick = renderAugment;
+  } else {
+    run.phase = 'over'; meta.runs++;
+    save(); return renderOver();
+  }
+  save(); topbar(); show('scr-result');
+}
+function offerAugments() { return shuffle(AUGMENTS.filter(a => !a.retired).map(a => a.id)).slice(0, 3); }
+function renderAugment() {
+  topbar();
+  $('augCards').innerHTML = run.augOffer.map(id => { const a = AUGMENTS.find(x => x.id === id); return `<button class="aug" data-aug="${id}"><h3>${esc(a.name)}</h3><p>${esc(a.text)}</p></button>`; }).join('');
+  $('augCards').querySelectorAll('[data-aug]').forEach(b => b.onclick = () => takeAugment(b.dataset.aug));
+  const free = run.freeRerolls > 0;
+  $('augReroll').textContent = free ? `Reroll (free, ${run.freeRerolls} left)` : `Reroll ($${run.augRerollCost})`;
+  $('augReroll').disabled = !free && run.money < run.augRerollCost;
+  $('augReroll').onclick = () => {
+    if (run.freeRerolls > 0) run.freeRerolls--;
+    else { if (run.money < run.augRerollCost) return; run.money -= run.augRerollCost; run.augRerollCost += CONFIG.augReroll.step; }
+    run.augOffer = offerAugments(); save(); renderAugment();
+  };
+  $('augSkip').onclick = () => { run.money += 2; startRound(); };
+  show('scr-augment');
+}
+function applyAugment(id, done) {
+  const a = AUGMENTS.find(x => x.id === id);
+  const finish = on => { run.augments.push({ id, on }); closeModal(); done(); };
+  if (a.money) { run.money += a.money; return finish(); }
+  if (a.pu) { for (const [k, v] of Object.entries(a.pu)) run.pu[k] = (run.pu[k] || 0) + v; return finish(); }
+  if (a.slot) { a.slot.forEach(s => run.slotBuffs.push({ slot: s, d: a.d })); return finish(); }
+  if (a.target === 'pick') {
+    const keys = Object.keys({ ...a.d, ...a.set, ...a.min, ...(a.cond ? a.cond.d : {}) });
+    const block = pid => {
+      const m = run.perm[pid];
+      if (a.set && m) { const clash = Object.keys(a.set).filter(k => k in m.set); if (clash.length) return `already set: ${clash.map(k => STAT_LABEL[k]).join(', ')}`; }
+      const has = boostsOn(pid);
+      if (has.some(x => x.id === a.id || AUG[x.id].name === a.name)) return 'dup';
+      if (has.length >= CONFIG.maxBoosts) return 'full';
+      return '';
+    };
+    block.dup = a.name;
+    pickPlayer(`${a.name}: who gets it?`, a.text, keys.length ? keys : ['swing', 'hitting'], pid => { addPerm(pid, a); finish(pid); }, block);
+  }
+}
+function takeAugment(id) { applyAugment(id, startRound); }
+function renderOver() {
+  topbar();
+  $('overTitle').textContent = 'Game over';
+  const last = run.history[run.history.length - 1];
+  $('overLede').textContent = last ? `${run.wins} win${run.wins === 1 ? '' : 's'}. Lost ${last.us}-${last.them} in game ${last.g}.` : '';
+  const rows = Object.entries(run.totals).map(([id, t]) => ({ id: +id, ...t })).sort((a, b) => (b.R - a.R) || (b.H - a.H) || (b.RBI - a.RBI));
+  const avg = t => t.AB ? (t.H / t.AB).toFixed(3).replace(/^0/, '') : '.000';
+  $('leadersTbl').innerHTML = `<tr><th>Player</th><th class="n">R</th><th class="n">H</th><th class="n">HR</th><th class="n">RBI</th><th class="n">SB</th><th class="n">BB</th><th class="n">K</th><th class="n">AVG</th><th class="n">G</th></tr>` +
+    rows.map(t => `<tr><td>${esc(BY_ID[t.id] ? BY_ID[t.id].name : t.id)}</td>${['R', 'H', 'HR', 'RBI', 'SB', 'BB', 'K'].map(k => `<td class="n">${t[k] || 0}</td>`).join('')}<td class="n">${avg(t)}</td><td class="n">${t.G}</td></tr>`).join('');
+  $('overNew').onclick = () => { newRun(); renderName(); };
+  show('scr-over');
+}
+function resume() {
+  if (!run) return;
+  if (run.phase === 'name') return renderName();
+  if (run.phase === 'draft') return renderDraft();
+  if (run.phase === 'augment') return renderAugment();
+  if (run.phase === 'over') return renderOver();
+  if (run.phase === 'reel') return renderReel();
+  if (run.phase === 'playing') { run.phase = 'hub'; run.pending = null; save(); }
+  renderHub();
+}
+
+/* ---- opponent hover stats ---- */
+(() => {
+  const tip = $('tip');
+  const html = id => {
+    const p = S(id), pit = CORE_PITCHES.map(k => `${PITCH_LABEL[k]} ${p[k]}`).join(', ');
+    const pos = run && run.pos && run.pos[id] != null && run.roster.includes(id) ? POS[run.pos[id]] : run && run.next && run.next.pos[id] != null ? POS[run.next.pos[id]] : run && run.bench.includes(id) ? 'Bench' : '';
+    const row = (a, x, b, y) => `<span>${a}</span><span>${x}</span><span>${b}</span><span>${y}</span>`;
+    return `<div class="h"><img src="${FACE(id)}" alt=""><div><b>${esc(p.name)}</b>${pos} &nbsp;height ${p.height}</div></div>
+      <div class="g">${row('Power', p.swing, 'Contact', p.hitting)}${row('Vision', p.eye, 'Speed', `${p.speed} T${p.t}`)}${row('Arm', p.arm, 'Coord', p.coordination)}${row('Throw', p.throwing, 'Stamina', p.stamina)}</div>
+      <div class="pt">${pit ? 'Pitches: ' + esc(pit) : 'No pitches'}</div>`;
+  };
+  const speedHTML = () => `<div class="h"><b>Speed tiers</b></div><div class="g2">${SPEED_TIERS.map(([t, r]) => `<span>T${t}</span><span>${r}</span>`).join('')}</div>`;
+  document.addEventListener('pointerover', e => {
+    const t = e.target.closest('[data-tip],[data-tiptext]');
+    if (!t || e.pointerType === 'touch') { if (!t) tip.style.display = 'none'; return; }
+    const tt = t.dataset.tiptext || '';
+    tip.innerHTML = tt === 'speed' ? speedHTML() : tt.startsWith('t:') ? (([a, b]) => `<div class="h"><b>${esc(a)}</b></div><div>${esc(b)}</div>`)(tt.slice(2).split('|')) : html(+t.dataset.tip); tip.style.display = 'block';
+  });
+  document.addEventListener('pointermove', e => {
+    if (tip.style.display !== 'block') return;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + 16, y = e.clientY + 16;
+    if (x + w > innerWidth - 8) x = e.clientX - w - 16;
+    if (y + h > innerHeight - 8) y = e.clientY - h - 16;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+  const SEL = '[data-tip],[data-tiptext]';
+  document.addEventListener('pointerout', e => { if (e.target.closest && e.target.closest(SEL) && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(SEL))) tip.style.display = 'none'; });
+})();
+
+/* ---- sound settings ---- */
+function openSettings() {
+  const opt = (k, label) => `<label class="opt"><input type="checkbox" data-set="${k}" ${settings[k] ? 'checked' : ''}> ${label}</label>`;
+  openModal(`<h3>Sound settings</h3>
+    ${opt('music', 'Game music')}${opt('commentary', 'Play-by-play commentary')}${opt('gooch', 'Extra announcer chatter')}${opt('crowd', 'Crowd and background sound')}${opt('playerTalking', 'Players talking')}${opt('playerChatter', 'Infield chatter')}${opt('reelSound', 'Reel ticks')}
+    <h3 class="sub">Testing</h3>${opt('autoplay', 'Sim games (the CPU plays your side)')}
+    <div class="row-actions"><button class="btn ghost" data-close>Done</button></div>`);
+  $('modalInner').querySelectorAll('[data-set]').forEach(c => c.onchange = () => { settings[c.dataset.set] = c.checked; save(); });
+}
+$('setBtn').onclick = openSettings;
+document.querySelectorAll('#barVol,#hudVol').forEach(i => { i.value = Sound.get(); i.oninput = () => Sound.set(i.value); });
+
+/* ======================================================================
+   IN-GAME SIDE PANELS: cards on the left, batter + power-ups + options on the right
+   ====================================================================== */
+const SWING = { 1: 'Power', 2: 'Line drive', 3: 'Grounder', 4: 'Bunt', 5: 'Aluminum Power', 6: "Screamin' Line Drive", 7: 'Under Grounder', 8: 'Crazy Bunt' };
+const Panel = (() => {
+  let conds = [], hs = [], live = null, last = '';
+  function layout() {
+    const W = innerWidth, H = innerHeight;
+    let side = clamp(Math.floor((W - H * 4 / 3) / 2), 210, 99999), cw = W - 2 * side, ch = Math.floor(cw * 3 / 4);
+    if (ch > H) { ch = H; cw = Math.floor(H * 4 / 3); }
+    side = Math.floor((W - cw) / 2);
+    const c = $('canvas'), top = Math.floor((H - ch) / 2), key = [side, top, cw, ch].join();
+    $('gLeft').style.width = $('gRight').style.width = side + 'px';
+    if (key === last) return;
+    last = key;
+    Object.assign(c.style, { left: side + 'px', top: top + 'px', width: cw + 'px', height: ch + 'px' });
+    window.dispatchEvent(new Event('resize'));
+  }
+  addEventListener('resize', e => { if (e.isTrusted && document.body.classList.contains('playing')) layout(); });
+  const sign = v => (v > 0 ? '+' : '') + v;
+  function active(x, f) {
+    if (!f) return 0;
+    switch (x.c) {
+      case 'runners': return f.on > 0 ? 1 : 0;
+      case 'loaded': return f.on === 3 ? 1 : 0;
+      case 'first': return f.pitches === 0 ? 1 : 0;
+      case 'inning1': return f.half < 2 ? 1 : 0;
+      case 'liner': return [2, 6].includes(f.swing) ? 1 : 0;
+      case 'grounder': return [3, 7].includes(f.swing) ? 1 : 0;
+      case 'foul': return f.fouls;
+      case 'momentum': return f.mom || 0;
+      case 'twostrikes': return f.strikes === 2 ? 1 : 0;
+      case 'fullcount': return f.balls === 3 && f.strikes === 2 ? 1 : 0;
+      case 'discipline': return (f.balls || 0) - Math.min(f.strikes || 0, f.rs ?? (f.strikes || 0));
+      case 'doubles': return f.dbl || 0;
+      case 'triples': return f.trp || 0;
+    }
+    return 0;
+  }
+  function statRow(id, k, ours, f, L) {
+    const base = BY_ID[id][k], fin = finalStats(id, L)[k];
+    const chips = [`<span class="c base">${base} base</span>`];
+    for (const src of statSources(id)) {
+      const tt = src.txt ? ` data-tiptext="${esc('t:' + src.src + '|' + src.txt)}"` : '';
+      if (k in src.set) chips.push(`<span class="c set"${tt}>set ${src.set[k]} ${esc(src.src)}</span>`);
+      if (src.d[k]) chips.push(`<span class="c ${src.d[k] > 0 ? 'up' : 'down'}"${tt}>${sign(src.d[k])} ${esc(src.src)}</span>`);
+      if (src.min[k]) chips.push(`<span class="c set"${tt}>min ${src.min[k]} ${esc(src.src)}</span>`);
+    }
+    let sit = 0;
+    if (ours) for (const x of conds) {
+      if (!(x.k === 0 || x.k === id) || !x.d[k]) continue;
+      const m = active(x, f), v = m * x.d[k];
+      sit += v;
+      chips.push(`<span class="c sit ${m ? 'on' : ''} ${v < 0 ? 'neg' : ''}"${x.txt ? ` data-tiptext="${esc('t:' + x.src + '|' + x.txt)}"` : ''}>${x.c === 'foul' ? `+${x.d[k]} per foul${m ? ` (${sign(v)})` : ''}` : x.c === 'momentum' ? `±${x.d[k]} momentum${m ? ` (${sign(v)})` : ''}` : sign(x.d[k])} ${esc(x.src)}, ${esc(COND[x.c].label.toLowerCase())}</span>`);
+    }
+    if (ours && f && f.kid === id && k !== 'speed') sit = k === 'swing' ? f.bp : k === 'hitting' ? f.bc : 0;
+    const tot = clamp(fin + sit, 0, CONFIG.statMax);
+    return `<div class="gstat"><div class="gl"><span ${k === 'speed' ? 'data-tiptext="speed"' : ''}>${STAT_LABEL[k]}${k === 'speed' ? ` <em class="tier">T${tierOf(tot)}</em>` : ''}</span><b class="${tot > base ? 'up' : tot < base ? 'down' : ''}">${tot}</b></div>
+      <div class="gbar"><i style="width:${Math.min(100, tot / 1.25)}%"></i></div><div class="gchips">${chips.join('')}</div></div>`;
+  }
+  // the game's fatigue: 0 fresh, 100 spent. shown flipped so 100 = full energy
+  function energyRow(fat) {
+    if (fat == null || isNaN(fat)) return '';
+    const e = clamp(100 - fat, 0, 100), c = e >= 70 ? 'up' : e < 35 ? 'down' : '';
+    return `<div class="gstat"><div class="gl"><span>Energy</span><b class="${c}">${e}</b></div><div class="gbar"><i style="width:${e}%;background:${e >= 70 ? 'var(--good)' : e < 35 ? 'var(--bad)' : 'var(--yellow)'}"></i></div></div>`;
+  }
+  function renderBat() {
+    const f = live, L = gameLayers();
+    let id = f ? f.kid : run.order[0], ours = f ? f.team === 0 : true;
+    if (!BY_ID[id]) { put($('gBat'), '<div class="gh">At bat</div><p class="small">Waiting for the first pitch.</p>'); return; }
+    const p = BY_ID[id];
+    const sit = f ? [`${f.on ? f.on + ' on' : 'Bases empty'}`, `${f.outs} out${f.outs === 1 ? '' : 's'}`, `count ${f.balls}-${f.strikes}`, f.pitches === 0 ? 'first pitch' : `pitch ${f.pitches + 1}`, f.fouls ? `${f.fouls} foul${f.fouls === 1 ? '' : 's'}` : '', ours && SWING[f.swing] ? `swing: ${SWING[f.swing]}` : ''].filter(Boolean).join(', ') : '';
+    const hsTag = ours && hs.includes(id) ? '<span class="c sit on">Head Start: starts 2-0</span>' : '';
+    put($('gBat'), `<div class="gh">${ours ? 'Your batter' : 'Their batter'}</div>
+      <div class="gwho"><img src="${FACE(id)}" alt=""><div><b>${esc(p.name)}</b><small>${ours && run.pos[id] != null ? POS[run.pos[id]] + ', ' : ''}bats ${p.handedness === 2 ? 'left' : 'right'}</small></div></div>
+      ${hsTag ? `<div class="gchips">${hsTag}</div>` : ''}
+      ${statRow(id, 'swing', ours, f, L)}${statRow(id, 'hitting', ours, f, L)}${statRow(id, 'speed', ours, f, L)}${energyRow(f && f.kid === id ? f.fat : null)}
+      ${sit ? `<p class="gsit">${esc(sit)}</p>` : ''}`);
+  }
+  function renderGame() {
+    const n = run.next, f = live, total = f && f.len ? Math.round(f.len / 2) : n.innings;
+    const inn = f && f.half >= 0 ? Math.floor(f.half / 2) + 1 : 1, top = !f || f.half % 2 === 0;
+    put($('gGame'), `<div class="gh">Game ${run.game}: ${total} inning${total === 1 ? '' : 's'}</div>
+      <div class="gscore"><div class="inn"><small>Inning</small><b>${f ? `${top ? 'Top' : 'Bot'} ${inn}` : '1'}<i> of ${total}</i></b></div>
+      <div class="inn"><small>Difficulty</small><b>${esc(DIFF[n.difficulty])}</b>${n.boost ? `<small>CPU hitters +${n.boost}</small>` : ''}</div></div>
+      <p class="gsit">${esc(PARK[n.field])}${n.tee ? ', tee ball' : ''}, mercy at ${CONFIG.mercy}${inn > n.innings ? ', extra innings' : ''}</p>`);
+  }
+  const put = (el, html) => { if (el.__h !== html) { el.__h = html; el.innerHTML = html; } };
+  function renderPu(counts) { put($('hudPu'), CONFIG.powerups.map(p => puIcon(p.k, counts[p.k] || 0)).join('')); }
+  function start(sent, c, h) {
+    conds = c; hs = h; live = null; last = '';
+    renderPu(sent);
+    const act = activeCards();
+    $('gCards').innerHTML = act.length ? act.map(c => jokerHTML(c.id, { on: c.on })).join('') : '<p class="small">No cards.</p>';
+    if ($('gAugs')) $('gAugs').innerHTML = run.augments.length ? run.augments.map(a => { const A = AUG[a.id]; if (!A) return ''; return `<div class="gaug" title="${esc(A.text)}"><b>${esc(A.name)}</b>${a.on != null && BY_ID[a.on] ? ` <small>${esc(shortName(a.on))}</small>` : ''}</div>`; }).join('') : '<p class="small">None yet.</p>';
+    renderGame(); renderBat();
+    requestAnimationFrame(layout);
+  }
+  function feed(v) {
+    if (!run || v[0] !== run.seq) return;
+    const [, kid, team, on, pitches, fouls, swing, outs, half, bp, bc, pu1, pu2, pu3, pu4, jz, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs] = v;
+    live = { kid, team, on, pitches, fouls, swing, outs, half, bp, bc, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs };
+    renderPu({ alum: pu1, line: pu2, under: pu3, cbunt: pu4, juice: jz });
+    renderGame(); renderBat();
+  }
+  return { start, feed, layout };
+})();
+$('fsBtn').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+
+/* ======================================================================
+   ENGINE
+   ====================================================================== */
+const Engine = (() => {
+  const GAME_DIR = '/games/bb2001', HOME = '/home/web_user', SAVE_DIR = HOME + '/saves';
+  const IN = SAVE_DIR + '/baseball2001-rogue_in.ini', OUT = SAVE_DIR + '/baseball2001-rogue_out.ini', LIVE = SAVE_DIR + '/baseball2001-rogue_live.ini';
+  const PATCHES = { 'baseball 2001.he0': 'patches/he0.bbrp', 'baseball 2001.(a)': 'patches/a.bbrp', 'baseball 2001.(b)': 'patches/b.bbrp' };
+  const NEEDED = ['baseball 2001.he0', 'baseball 2001.(a)', 'baseball 2001.(b)', 'baseball 2001.he2', 'baseball 2001.he4', 'baseball 2001.he9'];
+  const PATCH_VER = '15';
+  let booted = false, ready = false, onReady = null, pollTimer = null, liveTimer = null;
+  const sync = populate => new Promise((res, rej) => FS.syncfs(populate, e => e ? rej(e) : res()));
+  const exists = p => FS.analyzePath(p).exists;
+  function mkdirp(path) { let cur = ''; for (const part of path.split('/').filter(Boolean)) { cur += '/' + part; if (!exists(cur)) FS.mkdir(cur); } }
+  const patchVer = () => exists(GAME_DIR + '/.patched') ? new TextDecoder().decode(FS.readFile(GAME_DIR + '/.patched')).trim() : '';
+  const hasGame = () => patchVer() === PATCH_VER && NEEDED.every(n => exists(GAME_DIR + '/' + n));
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8) { let c = ~0 >>> 0; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xff] ^ (c >>> 8); return (~c) >>> 0; }
+  function applyPatch(old, patch) {
+    const dv = new DataView(patch.buffer, patch.byteOffset, patch.byteLength);
+    if (String.fromCharCode(...patch.slice(0, 5)) !== 'BBRP1') throw new Error('bad patch file');
+    const on = dv.getUint32(6, true), nn = dv.getUint32(10, true), oc = dv.getUint32(14, true), nc = dv.getUint32(18, true);
+    if (old.length !== on || crc32(old) !== oc) throw new Error('this copy of the game does not match the one the patch was made for');
+    const out = new Uint8Array(nn); let p = 22, w = 0;
+    for (;;) {
+      const t = patch[p++]; if (t === 0) break;
+      if (t === 1) { const s = dv.getUint32(p, true), L = dv.getUint32(p + 4, true); p += 8; out.set(old.subarray(s, s + L), w); w += L; }
+      else { const L = dv.getUint32(p, true); p += 4; out.set(patch.subarray(p, p + L), w); w += L; p += L; }
+    }
+    if (w !== nn || crc32(out) !== nc) throw new Error('patched file failed its check');
+    return out;
+  }
+  async function importEntries(entries, status) {
+    const byName = {};
+    for (const e of entries) { const base = e.rel.split('/').pop().toLowerCase(); if (NEEDED.includes(base)) byName[base] = e.file; }
+    const missing = NEEDED.filter(n => !byName[n]);
+    if (missing.length) { status('Missing: ' + missing.join(', ') + '. Pick the folder that holds "baseball 2001.he0".', true); return false; }
+    mkdirp(GAME_DIR);
+    for (const n of NEEDED) {
+      status(`Reading ${n}…`);
+      let data = new Uint8Array(await byName[n].arrayBuffer());
+      if (PATCHES[n]) {
+        status(`Patching ${n}…`);
+        const pr = await fetch(PATCHES[n] + '?v=' + PATCH_VER); if (!pr.ok) throw new Error('could not load ' + PATCHES[n]);
+        data = applyPatch(data, new Uint8Array(await pr.arrayBuffer()));
+      }
+      FS.writeFile(GAME_DIR + '/' + n, data);
+    }
+    FS.writeFile(GAME_DIR + '/.patched', PATCH_VER);
+    status('Saving to browser storage…');
+    await sync(false);
+    return true;
+  }
+  async function readOut(path = OUT) {
+    if (!exists(path)) return null;
+    const raw = FS.readFile(path);
+    const txt = raw[0] === 0x1f && raw[1] === 0x8b ? await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(raw);
+    const res = {};
+    for (const line of txt.split(/\r?\n/)) { const m = line.match(/^\s*([^=\[;]+?)\s*=\s*(.*?)\s*\0*$/); if (m) res[m[1]] = m[2]; }
+    for (const k of ['seq', 'user', 'cpu', 'halves', 'len']) if (k in res) res[k] = +res[k];
+    return res;
+  }
+  function boot() {
+    if (booted) return; booted = true;
+    for (const f of [IN, OUT]) if (exists(f)) FS.unlink(f);
+    mkdirp(SAVE_DIR);
+    FS.writeFile(IN, '[boot]\nskipintro=1\n[setup]\nseq=0\n');
+    Module.callMain(['--path=' + GAME_DIR, '--savepath=' + SAVE_DIR, 'baseball2001']);
+  }
+  // while a game runs, the clubhouse DOM (thousands of nodes, big inline images) is taken out of the page,
+  // so extensions that scan the page have almost nothing to walk
+  let parked = null;
+  function setPlaying(b) {
+    document.body.classList.toggle('playing', b); Sound.setInGame(b);
+    const app = $('app');
+    if (b && app && !parked) { parked = { node: app, next: app.nextSibling }; app.remove(); }
+    else if (!b && parked) { document.body.insertBefore(parked.node, parked.next); parked = null; }
+  }
+  function play(ini, seq) {
+    boot();
+    if (exists(LIVE)) FS.unlink(LIVE);
+    FS.writeFile(IN, ini);
+    setPlaying(true); $('canvas').focus();
+    clearInterval(pollTimer); clearInterval(liveTimer);
+    let lastLive = '';
+    liveTimer = setInterval(async () => {
+      const r = await readOut(LIVE).catch(() => null);
+      if (r && r.s && r.s !== lastLive) { lastLive = r.s; Panel.feed(r.s.split(',').map(Number)); }
+    }, 400);
+    pollTimer = setInterval(async () => {
+      const r = await readOut().catch(() => null);
+      if (r && r.seq === seq) { clearInterval(pollTimer); clearInterval(liveTimer); setPlaying(false); onResult(r); }
+    }, 1000);
+  }
+  window.addEventListener('keydown', e => { if (document.body.classList.contains('playing') && e.key === 'F5' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  window.Module = {
+    noInitialRun: true, canvas: $('canvas'),
+    print: t => console.log(t), printErr: t => console.warn(t),
+    onAbort: what => { setPlaying(false); $('titleStatus').textContent = 'The game engine crashed: ' + what + '. Reload the page; your run is saved.'; show('scr-title'); },
+    async onRuntimeInitialized() {
+      mkdirp('/games'); mkdirp(HOME);
+      FS.mount(FS.filesystems.IDBFS, {}, '/games');
+      FS.mount(FS.filesystems.IDBFS, { autoPersist: true }, HOME);
+      await sync(true).catch(e => console.warn(e));
+      ready = true; onReady && onReady();
+    }
+  };
+  return { importEntries, hasGame, play, boot, whenReady: f => ready ? f() : (onReady = f), storedInfo: () => hasGame() ? 'patched and ready' : (patchVer() ? 'patched by an older version, load them again' : 'none') };
+})();
+
+/* ---- import UI ---- */
+function impStatus(t, err) { $('impStatus').textContent = t; $('impStatus').classList.toggle('err', !!err); }
+async function doImport(entries) {
+  try { if (await Engine.importEntries(entries, impStatus)) { impStatus(''); showTitle(); } }
+  catch (e) { console.error(e); impStatus('Import failed: ' + e.message, true); }
+}
+const fromInput = input => [...input.files].map(f => ({ rel: f.webkitRelativePath || f.name, file: f }));
+$('pickDir').onchange = e => doImport(fromInput(e.target));
+$('pickFiles').onchange = e => doImport(fromInput(e.target));
+(() => {
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('hover'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('hover'); }));
+  drop.addEventListener('drop', async e => {
+    const items = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean), out = [];
+    const readAll = r => new Promise((res, rej) => { const acc = []; const next = () => r.readEntries(b => b.length ? (acc.push(...b), next()) : res(acc), rej); next(); });
+    const walk = async (en, pre) => { if (en.isFile) out.push({ rel: pre + en.name, file: await new Promise((res, rej) => en.file(res, rej)) }); else if (en.isDirectory) for (const c of await readAll(en.createReader())) await walk(c, pre + en.name + '/'); };
+    impStatus('Reading dropped files…');
+    for (const it of items) await walk(it, '');
+    doImport(out);
+  });
+})();
+function showTitle() {
+  topbar();
+  $('contBtn').hidden = !(run && run.phase !== 'over');
+  $('storedInfo').textContent = Engine.storedInfo();
+  show('scr-title');
+}
+$('newRunBtn').onclick = () => { Engine.boot(); newRun(); renderName(); };
+$('contBtn').onclick = () => { Engine.boot(); resume(); };
+$('reimportBtn').onclick = () => show('scr-import');
+
+load(); topbar(); show('scr-wait');
+Engine.whenReady(() => Engine.hasGame() ? showTitle() : show('scr-import'));
+
+/* long descriptions: step the text down (not below 16px) until the card or boost keeps its shape */
+(() => {
+  const fit = el => {
+    if (!el.clientWidth) return;
+    const w = el.clientWidth; if (el.dataset.fitw == w) return; el.dataset.fitw = w;
+    const ps = el.querySelectorAll('p, h4'); ps.forEach(p => p.style.fontSize = '');
+    const target = el.classList.contains('ticket') ? el.clientWidth : el.clientWidth * 7 / 5;
+    for (let i = 0; i < 12 && el.scrollHeight > target + 2; i++) {
+      let shrunk = false;
+      ps.forEach(p => { const f = parseFloat(getComputedStyle(p).fontSize); if (f > 16) { p.style.fontSize = (f - 1) + 'px'; shrunk = true; } });
+      if (!shrunk) break;
+    }
+  };
+  let q = false;
+  const run = () => { q = false; document.querySelectorAll('.joker, .ticket').forEach(fit); };
+  const ask = () => { if (!q) { q = true; requestAnimationFrame(run); } };
+  new MutationObserver(ask).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('resize', ask);
+})();
+window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment };
+})();
+</script>
+<script src="scummvm.js"></script>
+</body>
+</html>

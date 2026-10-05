@@ -1,0 +1,87 @@
+diff --git a/backends/graphics/opengl/opengl-graphics.cpp b/backends/graphics/opengl/opengl-graphics.cpp
+index b8899fc4..68955311 100644
+--- a/backends/graphics/opengl/opengl-graphics.cpp
++++ b/backends/graphics/opengl/opengl-graphics.cpp
+@@ -1519,6 +1519,12 @@ Surface *OpenGLGraphicsManager::createSurface(const Graphics::PixelFormat &forma
+ 		}
+ 	} else if (getGLPixelFormat(format, glIntFormat, glFormat, glType)) {
+ 		return new Texture(glIntFormat, glFormat, glType, format);
++#ifdef __EMSCRIPTEN__
++	} else if (format == Graphics::PixelFormat(2, 5, 5, 5, 0, 10, 5, 0, 0)) {
++		// Browsers (ANGLE on D3D in particular) handle 16-bit 565 uploads poorly;
++		// convert to plain RGBA8888, which is the fast upload path everywhere.
++		return new FakeTexture(GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, Graphics::PixelFormat(4, 8, 8, 8, 8, 0, 8, 16, 24), format);
++#endif
+ 	} else if (OpenGLContext.packedPixelsSupported && format == Graphics::PixelFormat(2, 5, 5, 5, 0, 10, 5, 0, 0)) {
+ 		// OpenGL ES does not support a texture format usable for RGB555.
+ 		// Since SCUMM uses this pixel format for some games (and there is no
+diff --git a/backends/graphics/opengl/texture.cpp b/backends/graphics/opengl/texture.cpp
+index 4c364555..e7a2e8fc 100644
+--- a/backends/graphics/opengl/texture.cpp
++++ b/backends/graphics/opengl/texture.cpp
+@@ -163,6 +163,14 @@ bool GLTexture::setSize(uint width, uint height) {
+ 		_width  = width;
+ 		_height = height;
+ 	}
++#ifdef __EMSCRIPTEN__
++	// Cursors change size constantly; keep the bigger storage instead of
++	// reallocating the GL texture every time.
++	if (width != 0 && height != 0 && oldWidth >= _width && oldHeight >= _height) {
++		_width  = oldWidth;
++		_height = oldHeight;
++	}
++#endif
+ 
+ 	// If a size is specified, allocate memory for it.
+ 	if (width != 0 && height != 0) {
+diff --git a/engines/scumm/he/script_v60he.cpp b/engines/scumm/he/script_v60he.cpp
+index 5d65f0be..064a4c98 100644
+--- a/engines/scumm/he/script_v60he.cpp
++++ b/engines/scumm/he/script_v60he.cpp
+@@ -20,6 +20,9 @@
+  */
+ 
+ #include "common/archive.h"
++#include "common/config-manager.h"
++#include "common/fs.h"
++#include "common/compression/deflate.h"
+ #include "common/savefile.h"
+ 
+ #include "scumm/actor.h"
+@@ -204,6 +207,19 @@ Common::SeekableReadStream *ScummEngine_v60he::openFileForReading(const byte *fi
+ }
+ 
+ Common::SeekableReadStream *ScummEngine_v60he::openSaveFileForReading(const byte *fileName) {
++	// Roguelite bridge: files named rogue_* are written by the browser wrapper while the
++	// game runs, so bypass the save-file manager's directory cache and read from disk.
++	{
++		Common::String conv = convertSavePath(fileName);
++		if (conv.contains("-rogue_")) {
++			Common::FSNode node = Common::FSNode(ConfMan.getPath("savepath")).getChild(conv);
++			if (!node.exists())
++				return nullptr;
++			Common::SeekableReadStream *s = node.createReadStream();
++			return s ? Common::wrapCompressedReadStream(s) : nullptr;
++		}
++	}
++
+ 	Common::SeekableReadStream *file = _saveFileMan->openForLoading(convertSavePath(fileName));
+ 
+ 	if (file)
+diff --git a/graphics/opengl/debug.h b/graphics/opengl/debug.h
+index 8b6647ac..e10a4507 100644
+--- a/graphics/opengl/debug.h
++++ b/graphics/opengl/debug.h
+@@ -33,7 +33,12 @@ void clearGLError();
+ bool checkGLError(const char *expr, const char *file, int line);
+ } // End of namespace OpenGL
+ 
++#ifdef __EMSCRIPTEN__
++// glGetError is a synchronous round trip to the GPU process in browsers; skip it
++#define GL_WRAP_CHECK(err, call, name) do { (call); err = false; } while (false)
++#else
+ #define GL_WRAP_CHECK(err, call, name) do { OpenGL::clearGLError(); (call); err = OpenGL::checkGLError(#name, __FILE__, __LINE__); } while (false)
++#endif
+ #ifdef OPENGL_DEBUG
+ #define GL_WRAP_DEBUG(call, name) do { OpenGL::clearGLError(); (call); OpenGL::checkGLError(#name, __FILE__, __LINE__); } while (false)
+ #else

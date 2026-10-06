@@ -74,7 +74,7 @@
     background-image: repeating-conic-gradient(var(--g1) 0 25%, var(--g2) 0 50%); background-size: 4px 4px; }
   body.playing #app { display: none; }
 
-  .bar { display: flex; align-items: center; gap: 14px; padding: 8px 16px; background: #000; border-bottom: 4px solid var(--yellow-d); flex-wrap: wrap; }
+  .bar { display: flex; align-items: center; gap: 14px; padding: 8px 16px; background: #000; border-bottom: 4px solid var(--yellow-d); flex-wrap: wrap; position: sticky; top: 0; z-index: 15; }
   .bar h1 { font-size: 31px; color: var(--yellow); text-shadow: 3px 3px 0 var(--red); margin-right: auto; }
   .tile { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
   .tile b { font-family: "VT323", monospace; font-weight: 400; font-size: 28.5px; color: var(--yellow); line-height: 1; text-transform: uppercase;}
@@ -238,7 +238,7 @@
   .joker .rr { position: absolute; top: -12px; right: 6px; font-family: "VT323", monospace; font-size: 16px; color: #fff; background: var(--rc); padding: 0 5px; border: 2px solid #000; text-transform: uppercase;}
   .joker .ck { position: absolute; top: -12px; left: 6px; font-family: "VT323", monospace; font-size: 16px; color: #0e2433; background: #ffd23a; padding: 0 6px; border: 2px solid #000; text-transform: uppercase; }
   .joker { container-type: inline-size; }
-  .joker h4 { font-size: clamp(19px, 15cqw, 34px); line-height: 1; }
+  .joker h4 { font-size: clamp(22px, 17cqw, 40px); line-height: 1; margin-top: 12px; }
   .joker p { margin: 0; font-size: clamp(16px, 11.5cqw, 24px); line-height: 1.05; }
   .joker .on { font-size: clamp(15px, 10cqw, 22px); color: #4b5a46; }
   .joker .art { font-size: clamp(20px, 16cqw, 36px) !important; line-height: 1.05 !important; padding: 4px !important; }
@@ -344,20 +344,44 @@
   .ccompact { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; font-size: 16px; }
   .ccompact span { border: 2px solid rgba(0,0,0,.25); padding: 1px 6px; }
 
-  /* rarity shine: a light sweep across the card, faster and brighter the rarer it is */
-  .joker.rare::after, .joker.epic::after, .joker.legendary::after { content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,var(--sh-a)) 48%, rgba(255,255,255,calc(var(--sh-a) * 1.6)) 50%, rgba(255,255,255,var(--sh-a)) 52%, transparent 65%) no-repeat;
-    background-size: 250% 100%; animation: sheen var(--sh-t) ease-in-out infinite; mix-blend-mode: screen; }
-  .joker.rare { --sh-a: .22; --sh-t: 6s; }
-  .joker.epic { --sh-a: .32; --sh-t: 4s; box-shadow: 0 0 10px rgba(155,61,255,.55); }
-  .joker.legendary { --sh-a: .45; --sh-t: 2.6s; animation: legglow 2.6s ease-in-out infinite; }
-  .joker.legendary::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-    background-image: radial-gradient(circle, #fff 0 1.5px, transparent 2px), radial-gradient(circle, #fff6c2 0 1px, transparent 1.5px), radial-gradient(circle, #fff 0 1px, transparent 1.5px);
-    background-size: 100% 100%; background-position: 18% 22%, 78% 60%, 40% 84%; animation: sparkle 2.6s steps(1) infinite; }
+  /* rarity: sparkles from subtle (rare) to a full holo foil (legendary); only legendary gets the light sweep */
+  .joker .spk { position: absolute; z-index: 3; pointer-events: none; width: var(--s); height: var(--s); left: var(--x); top: var(--y);
+    background: radial-gradient(circle, #fff 0 18%, var(--c) 40%, transparent 70%);
+    clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    filter: drop-shadow(0 0 3px var(--c)); opacity: 0; animation: twinkle var(--t) ease-in-out var(--d) infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 45% { opacity: 1; transform: scale(1) rotate(45deg); } 60% { opacity: .9; transform: scale(.85) rotate(60deg); } }
+  .joker.epic { box-shadow: 0 0 10px rgba(155,61,255,.55); }
+  .joker.legendary { animation: legglow 2.6s ease-in-out infinite; }
+  .joker.legendary::before { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: color-dodge; opacity: .25;
+    background: linear-gradient(calc(110deg + var(--ry, 0deg) * 4), #ff4d6d, #ffd23a, #54f08b, #4dc3ff, #b06bff, #ff4d6d) 0 0 / 300% 300%;
+    background-position: calc(50% + var(--mx, 0) * 60%) calc(50% + var(--my, 0) * 60%); animation: holo 6s linear infinite; }
+  .joker.legendary::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.45) 48%, rgba(255,255,255,.75) 50%, rgba(255,255,255,.45) 52%, transparent 65%) no-repeat;
+    background-size: 250% 100%; animation: sheen 2.6s ease-in-out infinite; }
   @keyframes sheen { 0% { background-position: 150% 0; } 60%, 100% { background-position: -50% 0; } }
-  @keyframes legglow { 0%, 100% { box-shadow: 0 0 8px rgba(255,184,0,.5); } 50% { box-shadow: 0 0 20px rgba(255,214,90,.95); } }
-  @keyframes sparkle { 0% { opacity: 1; background-position: 18% 22%, 78% 60%, 40% 84%; } 33% { opacity: .9; background-position: 70% 14%, 24% 52%, 82% 88%; } 66% { opacity: 1; background-position: 46% 36%, 86% 30%, 16% 70%; } }
-  @media (prefers-reduced-motion: reduce) { .joker::after, .joker::before, .joker.legendary { animation: none !important; } }
+  @keyframes holo { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+  @keyframes legglow { 0%, 100% { box-shadow: 0 0 8px rgba(255,184,0,.5); } 50% { box-shadow: 0 0 22px rgba(255,214,90,.95); } }
+  /* shop and boost picks: lift and tilt toward the mouse */
+  .tilt { transition: transform .18s ease-out, box-shadow .18s ease-out; transform-style: preserve-3d; will-change: transform; }
+  .tilt:hover { transform: perspective(700px) translateY(-8px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(1.04); box-shadow: 0 14px 22px rgba(0,0,0,.45); z-index: 5; }
+  .tilt.joker.epic:hover { box-shadow: 0 14px 22px rgba(0,0,0,.45), 0 0 16px rgba(155,61,255,.8); }
+  /* boost picks after a win: same stamp as the shop, bigger */
+  .augs.tix { grid-template-columns: repeat(3, minmax(0, 260px)); justify-content: center; gap: 28px; }
+  .augpick { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+  .augpick .ticket h4 { font-size: 28px; } .augpick .ticket p { font-size: 22px; } .augpick .ticket .kind { font-size: 20px; }
+  /* dumpster easter egg */
+  .coinpop { position: fixed; z-index: 60; pointer-events: none; display: flex; align-items: center; gap: 10px; font-family: "Press Start 2P", monospace; font-size: 28px; color: #ffd23a;
+    text-shadow: 3px 3px 0 #000, 0 0 12px rgba(255,210,58,.8); animation: coinup 1.8s ease-out forwards; }
+  .coinpop .coin { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c2, #ffd23a 40%, #b88a00 75%); border: 3px solid #000;
+    display: grid; place-items: center; font-size: 20px; color: #6b4e00; text-shadow: none; animation: coinspin .45s linear infinite; }
+  @keyframes coinup { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 30% { transform: translate(-50%, -10px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -120px) scale(1); } }
+  @keyframes coinspin { 0% { transform: scaleX(1); } 50% { transform: scaleX(.15); } 100% { transform: scaleX(1); } }
+  @media (prefers-reduced-motion: reduce) { .joker::after, .joker::before, .joker.legendary, .joker .spk, .tilt { animation: none !important; transition: none !important; } }
+  .gbank { display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px; padding: 4px 8px; border: 2px solid var(--yellow-d); }
+  .gbank b { font-size: 26px; color: var(--good); }
+  .joker .art.live { gap: 2px; } .joker .art .shead { font-size: 1.05em; color: #fff; }
+  .joker .art .spos { color: #7dff7d; } .joker .art .sneg { color: #ff7a6a; }
+  #tip div { white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -641,27 +665,31 @@ const CARDS = [
   { id: 'pu-r', name: 'Power Up', rarity: 'rare', text: '+2 team power.', who: 'team', d: { swing: 2 } },
   { id: 'pu-e', name: 'Power Up', rarity: 'epic', text: '+3 team power.', who: 'team', d: { swing: 3 } },
   { id: 'pu-l', name: 'Power Up', rarity: 'legendary', text: '+5 team power.', who: 'team', d: { swing: 5 } },
-  { id: 'cannons-c', name: 'Cannons', rarity: 'common', text: '+5 team arm strength.', who: 'team', d: { arm: 5 } },
-  { id: 'cannons-r', name: 'Cannons', rarity: 'rare', text: '+10 team arm strength.', who: 'team', d: { arm: 10 } },
-  { id: 'cannons-e', name: 'Cannons', rarity: 'epic', text: '+15 team arm strength.', who: 'team', d: { arm: 15 } },
+  { id: 'cannons-c', name: 'Cannons', rarity: 'common', text: '+10 team arm strength.', who: 'team', d: { arm: 10 } },
+  { id: 'cannons-r', name: 'Cannons', rarity: 'rare', text: '+15 team arm strength.', who: 'team', d: { arm: 15 } },
+  { id: 'cannons-e', name: 'Cannons', rarity: 'epic', text: '+20 team arm strength.', who: 'team', d: { arm: 20 } },
   { id: 'nodrops', name: 'No Drops', rarity: 'common', text: 'Outfielders have 100 coordination.', who: 'of', min: { coordination: 100 } },
   { id: 'splash-c', name: 'Stat Splash', rarity: 'common', text: '+1 team contact, arm strength, coordination and stamina.', who: 'team', d: { hitting: 1, arm: 1, coordination: 1, stamina: 1 } },
-  { id: 'splash-r', name: 'Stat Splash', rarity: 'rare', text: '+1 team contact, arm strength, coordination and stamina.', who: 'team', d: { hitting: 1, arm: 1, coordination: 1, stamina: 1 } },
+  { id: 'splash-r', name: 'Stat Splash', rarity: 'rare', text: '+3 team contact, arm strength, coordination and stamina.', who: 'team', d: { hitting: 3, arm: 3, coordination: 3, stamina: 3 } },
   { id: 'vision', name: '20/20 Vision', rarity: 'common', text: 'Teamwide 100 vision.', who: 'team', min: { eye: 100 } },
   { id: 'freerolls', name: 'Freerolls', rarity: 'common', text: '1 free shop refresh each round.', freeShop: 1 },
   { id: 'minspeed', name: 'Minimum Speed Boost', rarity: 'common', text: 'All minimum speed players get +1 speed tier.', who: 'minspeed', d: { speed: 20 } },
   { id: 'roided', name: 'Roided', rarity: 'legendary', text: '+20 power to 1 player.', who: 'pick', d: { swing: 20 }, retired: true },
   { id: 'wheels', name: 'Wheels', rarity: 'epic', text: '1 player set to 90 speed.', who: 'pick', min: { speed: 90 }, retired: true },
   { id: 'hotstart', name: 'Hot Start', rarity: 'rare', text: '+2 power, +3 contact to the first 3 batters.', who: 'slots', slots: [0, 1, 2], d: { swing: 2, hitting: 3 } },
-  { id: 'fundamentals', name: 'Fundamentals', rarity: 'common', text: '+10 team coordination, +5 team arm.', who: 'team', d: { coordination: 10, arm: 5 } },
+  { id: 'fundamentals', name: 'Fundamentals', rarity: 'common', text: '+15 team coordination, +10 team arm.', who: 'team', d: { coordination: 15, arm: 10 } },
   { id: 'heart-c', name: 'Heart Of The Order', rarity: 'common', text: '+1 power, +2 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 1, hitting: 2 } },
   { id: 'heart-r', name: 'Heart Of The Order', rarity: 'rare', text: '+2 power, +3 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 2, hitting: 3 } },
   { id: 'heart-e', name: 'Heart Of The Order', rarity: 'epic', text: '+3 power, +5 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 3, hitting: 5 } },
   { id: 'heart-l', name: 'Heart Of The Order', rarity: 'legendary', text: '+5 power, +7 contact to batters 3, 4 and 5.', who: 'slots', slots: [2, 3, 4], d: { swing: 5, hitting: 7 } },
   { id: 'cleanup-c', name: 'Cleanup', rarity: 'common', text: '+5 power to whoever bats 9th.', who: 'slots', slots: [8], d: { swing: 5 } },
   { id: 'leadoff-c', name: 'Leadoff', rarity: 'common', text: '+5 speed to whoever bats 1st.', who: 'slots', slots: [0], d: { speed: 5 } },
+  { id: 'leadoff-r', name: 'Leadoff', rarity: 'rare', text: '+10 speed to whoever bats 1st.', who: 'slots', slots: [0], d: { speed: 10 } },
+  { id: 'leadoff-e', name: 'Leadoff', rarity: 'epic', text: '+20 speed to whoever bats 1st.', who: 'slots', slots: [0], d: { speed: 20 } },
+  { id: 'pros', name: 'Professionals', rarity: 'epic', text: '+2 team power, +3 team contact, +5 team speed for each MLB pro in the starting lineup.', who: 'team', perPro: true, d: { swing: 2, hitting: 3, speed: 5 } },
+  { id: 'flyswatter', name: 'Infield Fly Swatter', rarity: 'epic', text: 'When the infield fly rule is called on your batter, it becomes a single instead.', ifs: true },
   { id: 'orig30', name: 'Original 30', rarity: 'rare', text: '+2 team power, +2 team contact for each backyard kid in the starting lineup.', who: 'team', perKid: true, d: { swing: 2, hitting: 2 } },
-  { id: 'dblmerchant', name: 'Double Merchant', rarity: 'common', text: '+1 team contact, +1 team speed per double this game.', who: 'team', cond: { c: 'doubles', d: { hitting: 1, speed: 1 } } },
+  { id: 'dblmerchant', name: 'Double Merchant', rarity: 'common', text: '+2 team contact, +2 team speed per double this game.', who: 'team', cond: { c: 'doubles', d: { hitting: 2, speed: 2 } } },
   { id: 'tripthreat', name: 'Triple Threat', rarity: 'epic', text: '+3 team power, contact and speed per triple this game.', who: 'team', cond: { c: 'triples', d: { swing: 3, hitting: 3, speed: 3 } } },
   { id: 'cheeser', name: 'Powerup Cheeser', rarity: 'rare', text: 'Gain 1 random power-up before each game.', freePu: 1 },
   { id: 'hotcorner', name: 'Hot Corner', rarity: 'common', text: 'Your 3B has 100 arm strength and 100 coordination.', who: 'pos', pos: 3, min: { arm: 100, coordination: 100 } },
@@ -796,6 +824,22 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run, met
 function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { run = s.run; meta = s.meta || meta; settings = { ...settings, ...(s.settings || {}) }; if (run && run.shop) run.shop = run.shop.map(x => typeof x === 'string' ? { type: 'card', id: x } : x); } } catch (e) {} }
 const PU_KEYS = CONFIG.powerups.map(p => p.k);
 const boostsOn = pid => run.augments.filter(x => x.on === pid && AUG[x.id]);
+// Cement Gardens easter egg: a ball in the dumpster pays $1
+function dumpsterCoin(n) {
+  run.money += n; save(); Panel.money && Panel.money(); try { topbar(); } catch (e) {}
+  const c = $('canvas').getBoundingClientRect(), el = document.createElement('div');
+  el.className = 'coinpop'; el.innerHTML = `<span class="coin">$</span>+$${n}`;
+  el.style.left = (c.left + c.width / 2) + 'px'; el.style.top = (c.top + c.height * .38) + 'px';
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1900);
+  try {
+    const A = window.AudioContext || window.webkitAudioContext, ac = dumpsterCoin.ac || (dumpsterCoin.ac = new A()), t = ac.currentTime;
+    [[988, 0, .08], [1319, .08, .35]].forEach(([f, at, len]) => {
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t + at); g.gain.exponentialRampToValueAtTime(.18, t + at + .01); g.gain.exponentialRampToValueAtTime(.0001, t + at + len);
+      o.connect(g); g.connect(ac.destination); o.start(t + at); o.stop(t + at + len + .02);
+    });
+  } catch (e) {}
+}
 const winPay = n => (CONFIG.econ.winByInnings[n ? n.innings : 3] ?? 5) + (n && n.tee ? CONFIG.econ.teeBonus : 0);
 
 /* ======================================================================
@@ -821,7 +865,7 @@ function gameLayers(opts = {}) {
   for (const b of run.slotBuffs) { const id = run.order[b.slot]; if (id != null) add(id, { d: b.d }); }
   for (const c of activeCards()) {
     const C = CARD[c.id];
-    if (C.who === 'team' && C.perKid) { const n = run.roster.filter(id => BY_ID[id].kind === 'kid').length; if (n) run.roster.forEach(id => add(id, { d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])) })); }
+    if (C.who === 'team' && (C.perKid || C.perPro)) { const n = perN(C); if (n) run.roster.forEach(id => add(id, { d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])) })); }
     else if (C.who === 'team') run.roster.forEach(id => add(id, C));
     else if (C.who === 'pos') run.roster.filter(id => run.pos[id] === C.pos).forEach(id => add(id, C));
     else if (C.who === 'of') run.roster.filter(id => [0, 1, 2].includes(run.pos[id])).forEach(id => add(id, C));
@@ -948,6 +992,7 @@ function activeCards() {
   for (const c of run.cards) { const C = CARD[c.id], b = best[C.name]; if (!b || RAR_RANK[C.rarity] > RAR_RANK[CARD[b.id].rarity]) best[C.name] = c; }
   return run.cards.filter(c => best[CARD[c.id].name] === c);
 }
+const perN = C => C.perKid ? run.roster.filter(id => BY_ID[id].kind === 'kid').length : C.perPro ? run.roster.filter(id => BY_ID[id].kind === 'pro').length : 0;
 const ownedFamily = name => run.cards.find(c => CARD[c.id].name === name);
 // situational boosts sent to the game: k = player id, 0 = whole lineup
 function condList() {
@@ -983,7 +1028,7 @@ function statSources(id) {
     const C = CARD[c.id], on = run.roster.includes(id);
     const hit = C.who === 'team' ? on : C.who === 'pos' ? on && run.pos[id] === C.pos : C.who === 'of' ? on && [0, 1, 2].includes(run.pos[id]) : C.who === 'slots' ? C.slots.some(sl => run.order[sl] === id)
       : C.who === 'minspeed' ? on && BY_ID[id].t <= 3 : C.who === 'pick' ? c.on === id : false;
-    if (hit && C.perKid) { const n = run.roster.filter(x => BY_ID[x].kind === 'kid').length; if (n) out.push({ src: `${C.name} (${n} kids)`, txt: C.text, d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])), set: {}, min: {} }); }
+    if (hit && (C.perKid || C.perPro)) { const n = perN(C); if (n) out.push({ src: `${C.name} (${n} ${C.perPro ? 'pros' : 'kids'})`, txt: C.text, d: Object.fromEntries(Object.entries(C.d).map(([k, v]) => [k, v * n])), set: {}, min: {} }); }
     else if (hit && !C.cond && (C.d || C.min || C.set)) out.push({ src: C.name, txt: C.text, d: C.d || {}, set: C.set || {}, min: C.min || {} });
   }
   return out;
@@ -1460,9 +1505,22 @@ function renderEcon() {
     <p class="small">A win pays $${winPay(n)} (${n ? n.innings : 3} innings: $6 for 2, $5 for 3, $4 for 4${n && n.tee ? ', +$1 tee ball' : ''}), plus $${e.perRun} per run of margin, plus $1 interest per $${e.interestPer} banked (max $${run.interestCap})${n && n.rival ? `, plus $${e.rivalryBonus} for the rivalry` : ''}. A loss ends the run.
     Cards sell for half. Players sell for half ${sellAll ? '(click a player to sell)' : 'once you have more than 9'}.</p>`;
 }
+// stacking cards show their live count and what it adds up to
+function stackArt(C, f) {
+  const LBL = { swing: 'Power', hitting: 'Contact', speed: 'Speed', eye: 'Vision', arm: 'Arm', coordination: 'Coord', stamina: 'Stamina' };
+  let head, n, d;
+  if (C.perKid || C.perPro) { n = perN(C); head = `${n} ${C.perPro ? (n === 1 ? 'MLB Pro' : 'MLB Pros') : (n === 1 ? 'Backyard Kid' : 'Backyard Kids')}`; d = C.d; }
+  else if (C.cond && ['doubles', 'triples', 'foul', 'discipline'].includes(C.cond.c)) {
+    const c = C.cond.c, ours = f && f.team === 0;
+    n = c === 'doubles' ? (f && f.dbl) || 0 : c === 'triples' ? (f && f.trp) || 0 : !ours ? 0 : c === 'foul' ? f.fouls || 0 : (f.balls || 0) - Math.min(f.strikes || 0, f.rs ?? (f.strikes || 0));
+    head = `${{ doubles: 'Doubles', triples: 'Triples', foul: 'Fouls', discipline: 'Balls - Strikes' }[c]}: ${n}`; d = C.cond.d;
+  } else return null;
+  const lines = Object.entries(d).map(([k, v]) => { const t = v * n; return `<span class="${t < 0 ? 'sneg' : t > 0 ? 'spos' : ''}">${t > 0 ? '+' : ''}${t} ${LBL[k] || k}</span>`; });
+  return `<span class="shead">${esc(head)}</span>${lines.join('')}`;
+}
 function jokerHTML(cid, opts = {}) {
-  const C = CARD[cid];
-  return `<div class="joker ${C.rarity}">${opts.tag ? '<span class="ck">Card</span>' : ''}<span class="rr">${RAR_LABEL[C.rarity]}</span><h4>${esc(C.name)}</h4><div class="art">${cardArt(C)}</div><p>${esc(C.text)}</p>${opts.on != null ? `<span class="on">On ${esc(BY_ID[opts.on].name)}</span>` : ''}</div>`;
+  const C = CARD[cid], live = opts.live ? stackArt(C, opts.f) : null;
+  return `<div class="joker ${C.rarity} ${opts.tilt ? 'tilt' : ''}">${opts.tag ? '<span class="ck">Card</span>' : ''}<span class="rr">${RAR_LABEL[C.rarity]}</span><h4>${esc(C.name)}</h4><div class="art ${live ? 'live' : ''}">${live || cardArt(C)}</div><p>${esc(C.text)}</p>${opts.on != null ? `<span class="on">On ${esc(BY_ID[opts.on].name)}</span>` : ''}</div>`;
 }
 function cardArt(C) {
   const ab = { swing: 'POW', hitting: 'CON', eye: 'VIS', speed: 'SPD', arm: 'ARM', coordination: 'CRD', stamina: 'STA' };
@@ -1473,6 +1531,8 @@ function cardArt(C) {
   if (C.freeShop) parts.push('Free refresh');
   if (C.freePu) parts.push('+1 power-up');
   if (C.perKid) parts.push('<small>per backyard kid</small>');
+  if (C.perPro) parts.push('<small>per MLB pro</small>');
+  if (C.ifs) parts.push('Infield fly<br>= single');
   const who = { opp: 'Them', of: 'OF', slots: 'Bat ' + (C.slots || []).map(x => x + 1).join('-'), minspeed: 'Slowest', pick: '1 player', team: 'Team', pos: POS[C.pos] }[C.who] || '';
   return `${who ? `<div>${who}</div>` : ''}<div>${parts.join('<br>')}</div>`;
 }
@@ -1485,9 +1545,9 @@ function renderShop() {
     const can = run.money >= pr && st.kind !== 'owned' && !(it.type === 'card' && full && st.kind !== 'upgrade');
     const label = st.kind === 'owned' ? 'Owned' : st.kind === 'upgrade' ? `Upgrade $${pr}` : `Buy $${pr}`;
     const btn = `<button class="btn sm" data-buy="${i}" ${can ? '' : 'disabled'} ${st.kind === 'upgrade' ? `title="Trades in your ${RAR_LABEL[CARD[st.old.id].rarity]} ${esc(CARD[st.old.id].name)} (worth $${cardSell(st.old.id)})"` : ''}>${label}</button>`;
-    if (it.type === 'card') return `<div class="sitem">${jokerHTML(it.id, { tag: true })}${st.kind === 'upgrade' ? `<small class="small">Replaces your ${RAR_LABEL[CARD[st.old.id].rarity].toLowerCase()}</small>` : ''}${btn}</div>`;
-    if (it.type === 'aug') { const a = AUGMENTS.find(x => x.id === it.id); return `<div class="sitem"><div class="ticket"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div>${btn}</div>`; }
-    return `<div class="sitem"><div class="putile"><img class="${it.id === 'juice' ? 'j' : ''}" src="${PU_ICON ? PU_ICON[it.id] : ''}" alt=""><small>${esc(puLabel(it.id))}</small></div>${btn}</div>`;
+    if (it.type === 'card') return `<div class="sitem">${jokerHTML(it.id, { tag: true, tilt: true })}${st.kind === 'upgrade' ? `<small class="small">Replaces your ${RAR_LABEL[CARD[st.old.id].rarity].toLowerCase()}</small>` : ''}${btn}</div>`;
+    if (it.type === 'aug') { const a = AUGMENTS.find(x => x.id === it.id); return `<div class="sitem"><div class="ticket tilt"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div>${btn}</div>`; }
+    return `<div class="sitem"><div class="putile tilt"><img class="${it.id === 'juice' ? 'j' : ''}" src="${PU_ICON ? PU_ICON[it.id] : ''}" alt=""><small>${esc(puLabel(it.id))}</small></div>${btn}</div>`;
   }).join('');
   $('shopCards').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buyShop(+b.dataset.buy));
   $('cardCount').textContent = `${run.cards.length} of ${CONFIG.cardSlots}`;
@@ -1503,7 +1563,7 @@ function renderShop() {
   const act = new Set(activeCards()), own = owned();
   $('myCards').innerHTML = run.cards.map((c, i) => {
     const sell = cardSell(c.id), C = CARD[c.id], idle = C.who === 'pick' && (c.on == null || !own.has(c.on));
-    return `<div class="sitem ${act.has(c) ? '' : 'dead'}">${jokerHTML(c.id, { on: idle ? null : c.on })}${act.has(c) ? '' : '<small class="small">Not stacking: your better one counts</small>'}${idle ? `<button class="btn sm" data-assign="${i}">Pick a player</button>` : ''}<button class="btn sm ghost" data-sell="${i}">Sell $${sell}</button></div>`;
+    return `<div class="sitem ${act.has(c) ? '' : 'dead'}">${jokerHTML(c.id, { on: idle ? null : c.on, live: true })}${act.has(c) ? '' : '<small class="small">Not stacking: your better one counts</small>'}${idle ? `<button class="btn sm" data-assign="${i}">Pick a player</button>` : ''}<button class="btn sm ghost" data-sell="${i}">Sell $${sell}</button></div>`;
   }).join('') + Array.from({ length: CONFIG.cardSlots - run.cards.length }, () => '<div class="sitem"><div class="joker emptyslot">Empty slot</div></div>').join('');
   $('myCards').querySelectorAll('[data-sell]').forEach(b => b.onclick = () => {
     const i = +b.dataset.sell, c = run.cards[i];
@@ -1642,7 +1702,7 @@ function startGame() {
   for (const c of activeCards()) if (CARD[c.id].freePu) for (let i = 0; i < CARD[c.id].freePu; i++) { const k = pick(PU_KEYS); run.pu[k] = (run.pu[k] || 0) + 1; }
   const sent = Object.fromEntries(PU_KEYS.map(k => [k, Math.min(k === 'juice' ? 10 : 9, run.pu[k] || 0)]));
   const st = settings;
-  let ini = `[boot]\nskipintro=1\n[setup]\nseq=${run.seq}\nhalfinnings=${n.innings * 2}\ndifficulty=${n.difficulty}\nfield=${n.field}\nnoerrors=0\nhotcold=0\nmercy=${CONFIG.mercy}\nautoplay=${st.autoplay ? 1 : 0}\n`;
+  let ini = `[boot]\nskipintro=1\n[setup]\nseq=${run.seq}\nhalfinnings=${n.innings * 2}\ndifficulty=${n.difficulty}\nfield=${n.field}\nnoerrors=0\nhotcold=0\nmercy=${CONFIG.mercy}\nifs=${activeCards().some(c => CARD[c.id].ifs) ? 1 : 0}\nautoplay=${st.autoplay ? 1 : 0}\n`;
   ini += `[audio]\nnomusic=${st.music ? 0 : 1}\nnocommentary=${st.commentary ? 0 : 1}\nnogooch=${st.gooch ? 0 : 1}\nnobackground=${st.crowd ? 0 : 1}\nnoplayertalking=${st.playerTalking ? 0 : 1}\nnoplayerchatter=${st.playerChatter ? 0 : 1}\n`;
   ini += `[name]\nadj=${run.team.adj}\nnoun=${run.team.noun}\ncolor1=${run.team.c1}\ncolor2=${run.team.c2}\nbasic1=${basicOf(run.team.c1)}\nbasic2=${basicOf(run.team.c2)}\ncpunoun=${cpu.noun}\ncpuadj=${cpu.adj}\ncpuc1=${cpu.c1}\ncpuc2=${cpu.c2}\n`;
   ini += `[powerups]\n` + PU_KEYS.map(k => `${k}=${sent[k]}\n`).join('');
@@ -1704,7 +1764,8 @@ function onResult(res) {
 function offerAugments() { return shuffle(AUGMENTS.filter(a => !a.retired).map(a => a.id)).slice(0, 3); }
 function renderAugment() {
   topbar();
-  $('augCards').innerHTML = run.augOffer.map(id => { const a = AUGMENTS.find(x => x.id === id); return `<button class="aug" data-aug="${id}"><h3>${esc(a.name)}</h3><p>${esc(a.text)}</p></button>`; }).join('');
+  $('augCards').classList.add('tix');
+  $('augCards').innerHTML = run.augOffer.map(id => { const a = AUGMENTS.find(x => x.id === id); return `<button class="augpick" data-aug="${id}"><div class="ticket tilt"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div></button>`; }).join('');
   $('augCards').querySelectorAll('[data-aug]').forEach(b => b.onclick = () => takeAugment(b.dataset.aug));
   const free = run.freeRerolls > 0;
   $('augReroll').textContent = free ? `Reroll (free, ${run.freeRerolls} left)` : `Reroll ($${run.augRerollCost})`;
@@ -1844,20 +1905,25 @@ const Panel = (() => {
   }
   function statRow(id, k, ours, f, L) {
     const base = BY_ID[id][k], fin = finalStats(id, L)[k];
+    // one chip for everything always on, one per active situational boost, one for the rest waiting
     const chips = [`<span class="c base">${base} base</span>`];
+    let sum = 0; const lines = [], fixed = [];
     for (const src of statSources(id)) {
-      const tt = src.txt ? ` data-tiptext="${esc('t:' + src.src + '|' + src.txt)}"` : '';
-      if (k in src.set) chips.push(`<span class="c set"${tt}>set ${src.set[k]} ${esc(src.src)}</span>`);
-      if (src.d[k]) chips.push(`<span class="c ${src.d[k] > 0 ? 'up' : 'down'}"${tt}>${sign(src.d[k])} ${esc(src.src)}</span>`);
-      if (src.min[k]) chips.push(`<span class="c set"${tt}>min ${src.min[k]} ${esc(src.src)}</span>`);
+      if (k in src.set) fixed.push(`set ${src.set[k]}: ${src.src}`);
+      if (src.min[k]) fixed.push(`min ${src.min[k]}: ${src.src}`);
+      if (src.d[k]) { sum += src.d[k]; lines.push(`${sign(src.d[k])} ${src.src}`); }
     }
-    let sit = 0;
+    if (lines.length) chips.push(`<span class="c ${sum > 0 ? 'up' : sum < 0 ? 'down' : ''}" data-tiptext="${esc('t:Always on|' + lines.join('\n'))}">${sign(sum)} bonuses</span>`);
+    if (fixed.length) chips.push(`<span class="c set" data-tiptext="${esc('t:Fixed|' + fixed.join('\n'))}">${esc(fixed[0].split(':')[0])}${fixed.length > 1 ? ` +${fixed.length - 1}` : ''}</span>`);
+    let sit = 0; const idle = [];
     if (ours) for (const x of conds) {
       if (!(x.k === 0 || x.k === id) || !x.d[k]) continue;
       const m = active(x, f), v = m * x.d[k];
       sit += v;
-      chips.push(`<span class="c sit ${m ? 'on' : ''} ${v < 0 ? 'neg' : ''}"${x.txt ? ` data-tiptext="${esc('t:' + x.src + '|' + x.txt)}"` : ''}>${x.c === 'foul' ? `+${x.d[k]} per foul${m ? ` (${sign(v)})` : ''}` : x.c === 'momentum' ? `±${x.d[k]} momentum${m ? ` (${sign(v)})` : ''}` : sign(x.d[k])} ${esc(x.src)}, ${esc(COND[x.c].label.toLowerCase())}</span>`);
+      if (m) chips.push(`<span class="c sit on ${v < 0 ? 'neg' : ''}"${x.txt ? ` data-tiptext="${esc('t:' + x.src + '|' + x.txt)}"` : ''}>${sign(v)} ${esc(x.src)}</span>`);
+      else idle.push(`${sign(x.d[k])} ${x.src}, ${COND[x.c].label.toLowerCase()}`);
     }
+    if (idle.length) chips.push(`<span class="c sit" data-tiptext="${esc('t:Not active right now|' + idle.join('\n'))}">${idle.length} waiting</span>`);
     if (ours && f && f.kid === id && k !== 'speed') sit = k === 'swing' ? f.bp : k === 'hitting' ? f.bc : 0;
     const tot = clamp(fin + sit, 0, CONFIG.statMax);
     return `<div class="gstat"><div class="gl"><span ${k === 'speed' ? 'data-tiptext="speed"' : ''}>${STAT_LABEL[k]}${k === 'speed' ? ` <em class="tier">T${tierOf(tot)}</em>` : ''}</span><b class="${tot > base ? 'up' : tot < base ? 'down' : ''}">${tot}</b></div>
@@ -1882,13 +1948,18 @@ const Panel = (() => {
       ${statRow(id, 'swing', ours, f, L)}${statRow(id, 'hitting', ours, f, L)}${statRow(id, 'speed', ours, f, L)}${energyRow(f && f.kid === id ? f.fat : null)}
       ${sit ? `<p class="gsit">${esc(sit)}</p>` : ''}`);
   }
+  function renderCards() {
+    const act = activeCards();
+    put($('gCards'), act.length ? act.map(c => jokerHTML(c.id, { on: c.on, live: true, f: live })).join('') : '<p class="small">No cards.</p>');
+  }
   function renderGame() {
     const n = run.next, f = live, total = f && f.len ? Math.round(f.len / 2) : n.innings;
     const inn = f && f.half >= 0 ? Math.floor(f.half / 2) + 1 : 1, top = !f || f.half % 2 === 0;
     put($('gGame'), `<div class="gh">Game ${run.game}: ${total} inning${total === 1 ? '' : 's'}</div>
       <div class="gscore"><div class="inn"><small>Inning</small><b>${f ? `${top ? 'Top' : 'Bot'} ${inn}` : '1'}<i> of ${total}</i></b></div>
       <div class="inn"><small>Difficulty</small><b>${esc(DIFF[n.difficulty])}</b>${n.boost ? `<small>CPU hitters +${n.boost}</small>` : ''}</div></div>
-      <p class="gsit">${esc(PARK[n.field])}${n.tee ? ', tee ball' : ''}, mercy at ${CONFIG.mercy}${inn > n.innings ? ', extra innings' : ''}</p>`);
+      <p class="gsit">${esc(PARK[n.field])}${n.tee ? ', tee ball' : ''}, mercy at ${CONFIG.mercy}${inn > n.innings ? ', extra innings' : ''}</p>
+      <div class="gbank"><small>Bank</small><b class="num">$${run.money}</b></div>`);
   }
   const put = (el, html) => { if (el.__h !== html) { el.__h = html; el.innerHTML = html; } };
   function renderPu(counts) { put($('hudPu'), CONFIG.powerups.map(p => puIcon(p.k, counts[p.k] || 0)).join('')); }
@@ -1896,7 +1967,7 @@ const Panel = (() => {
     conds = c; hs = h; live = null; last = '';
     renderPu(sent);
     const act = activeCards();
-    $('gCards').innerHTML = act.length ? act.map(c => jokerHTML(c.id, { on: c.on })).join('') : '<p class="small">No cards.</p>';
+    renderCards();
     if ($('gAugs')) $('gAugs').innerHTML = run.augments.length ? run.augments.map(a => { const A = AUG[a.id]; if (!A) return ''; return `<div class="gaug" title="${esc(A.text)}"><b>${esc(A.name)}</b>${a.on != null && BY_ID[a.on] ? ` <small>${esc(shortName(a.on))}</small>` : ''}</div>`; }).join('') : '<p class="small">None yet.</p>';
     renderGame(); renderBat();
     requestAnimationFrame(layout);
@@ -1906,9 +1977,9 @@ const Panel = (() => {
     const [, kid, team, on, pitches, fouls, swing, outs, half, bp, bc, pu1, pu2, pu3, pu4, jz, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs] = v;
     live = { kid, team, on, pitches, fouls, swing, outs, half, bp, bc, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs };
     renderPu({ alum: pu1, line: pu2, under: pu3, cbunt: pu4, juice: jz });
-    renderGame(); renderBat();
+    renderGame(); renderBat(); renderCards();
   }
-  return { start, feed, layout };
+  return { start, feed, layout, money: () => renderGame() };
 })();
 $('fsBtn').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 
@@ -1920,7 +1991,7 @@ const Engine = (() => {
   const IN = SAVE_DIR + '/baseball2001-rogue_in.ini', OUT = SAVE_DIR + '/baseball2001-rogue_out.ini', LIVE = SAVE_DIR + '/baseball2001-rogue_live.ini';
   const PATCHES = { 'baseball 2001.he0': 'patches/he0.bbrp', 'baseball 2001.(a)': 'patches/a.bbrp', 'baseball 2001.(b)': 'patches/b.bbrp' };
   const NEEDED = ['baseball 2001.he0', 'baseball 2001.(a)', 'baseball 2001.(b)', 'baseball 2001.he2', 'baseball 2001.he4', 'baseball 2001.he9'];
-  const PATCH_VER = '15';
+  const PATCH_VER = '16';
   let booted = false, ready = false, onReady = null, pollTimer = null, liveTimer = null;
   const sync = populate => new Promise((res, rej) => FS.syncfs(populate, e => e ? rej(e) : res()));
   const exists = p => FS.analyzePath(p).exists;
@@ -1995,10 +2066,11 @@ const Engine = (() => {
     FS.writeFile(IN, ini);
     setPlaying(true); $('canvas').focus();
     clearInterval(pollTimer); clearInterval(liveTimer);
-    let lastLive = '';
+    let lastLive = '', lastDump = 0;
     liveTimer = setInterval(async () => {
       const r = await readOut(LIVE).catch(() => null);
       if (r && r.s && r.s !== lastLive) { lastLive = r.s; Panel.feed(r.s.split(',').map(Number)); }
+      if (r && r.d && run) { const [sq, n] = r.d.split(',').map(Number); if (sq === run.seq && n > lastDump) { const add = n - lastDump; lastDump = n; dumpsterCoin(add); } }
     }, 400);
     pollTimer = setInterval(async () => {
       const r = await readOut().catch(() => null);
@@ -2063,19 +2135,42 @@ Engine.whenReady(() => Engine.hasGame() ? showTitle() : show('scr-import'));
     const w = el.clientWidth; if (el.dataset.fitw == w) return; el.dataset.fitw = w;
     const ps = el.querySelectorAll('p, h4'); ps.forEach(p => p.style.fontSize = '');
     const target = el.classList.contains('ticket') ? el.clientWidth : el.clientWidth * 7 / 5;
-    for (let i = 0; i < 12 && el.scrollHeight > target + 2; i++) {
-      let shrunk = false;
-      ps.forEach(p => { const f = parseFloat(getComputedStyle(p).fontSize); if (f > 16) { p.style.fontSize = (f - 1) + 'px'; shrunk = true; } });
-      if (!shrunk) break;
+    // description text gives way first (to 16px); the name only shrinks after that, and never below 22px
+    for (const [sel, min] of [['p', 16], ['h4', 22]]) {
+      const els = el.querySelectorAll(sel);
+      for (let i = 0; i < 14 && el.scrollHeight > target + 2; i++) {
+        let shrunk = false;
+        els.forEach(p => { const f = parseFloat(getComputedStyle(p).fontSize); if (f > min) { p.style.fontSize = (f - 1) + 'px'; shrunk = true; } });
+        if (!shrunk) break;
+      }
     }
   };
   let q = false;
-  const run = () => { q = false; document.querySelectorAll('.joker, .ticket').forEach(fit); };
+  const SPK = { rare: [4, '#9cc2ff'], epic: [8, '#d6a8ff'], legendary: [16, '#fff0a0'] };
+  const sparkle = el => {
+    if (el.dataset.spk) return; el.dataset.spk = 1;
+    const r = ['rare', 'epic', 'legendary'].find(k => el.classList.contains(k)); if (!r) return;
+    const [n, c] = SPK[r], big = r === 'legendary' ? 16 : r === 'epic' ? 13 : 10;
+    for (let i = 0; i < n; i++) {
+      const sp = document.createElement('i'); sp.className = 'spk';
+      sp.style.cssText = `--x:${4 + Math.random() * 84}%;--y:${4 + Math.random() * 84}%;--s:${big * (.55 + Math.random() * .7)}px;--c:${c};--t:${(r === 'legendary' ? 1.4 : 2.2) + Math.random() * 1.8}s;--d:${-Math.random() * 3}s`;
+      el.appendChild(sp);
+    }
+  };
+  const run = () => { q = false; document.querySelectorAll('.joker, .ticket').forEach(fit); document.querySelectorAll('.joker').forEach(sparkle); };
   const ask = () => { if (!q) { q = true; requestAnimationFrame(run); } };
   new MutationObserver(ask).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', ask);
+  // tilt toward the mouse on shop items and boost picks
+  document.addEventListener('pointermove', e => {
+    const t = e.target.closest && e.target.closest('.tilt'); if (!t) return;
+    const b = t.getBoundingClientRect(), mx = (e.clientX - b.left) / b.width - .5, my = (e.clientY - b.top) / b.height - .5;
+    t.style.setProperty('--ry', (mx * 14).toFixed(1) + 'deg'); t.style.setProperty('--rx', (-my * 14).toFixed(1) + 'deg');
+    t.style.setProperty('--mx', mx.toFixed(3)); t.style.setProperty('--my', my.toFixed(3));
+  });
+  document.addEventListener('pointerout', e => { const t = e.target.closest && e.target.closest('.tilt'); if (t && !t.contains(e.relatedTarget)) ['--rx', '--ry', '--mx', '--my'].forEach(k => t.style.removeProperty(k)); });
 })();
-window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment };
+window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment, dumpsterCoin, renderAugment };
 })();
 </script>
 <script src="scummvm.js"></script>

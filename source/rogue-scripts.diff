@@ -1,6 +1,6 @@
 --- clean/project.scu	2026-10-04 13:04:03.339109196 +0000
-+++ b/project.scu	2026-10-05 02:49:49.481085765 +0000
-@@ -1160,6 +1160,28 @@
++++ b/project.scu	2026-10-06 16:11:29.960195308 +0000
+@@ -1160,6 +1160,31 @@
  var global703@703
  var global705@705
  var global706@706
@@ -26,12 +26,40 @@
 +var gRogueDbl@739
 +var gRogueTrp@740
 +var gRogueAbStrikes@741
++var gRogueDump@742
++var gRogueIFS@743
++var gRogueSingle@744
  
  ; FileMode
  const FOR-READ = 1
 --- clean/baseball.scu	2026-10-04 13:04:03.351341675 +0000
-+++ b/baseball.scu	2026-10-05 03:26:06.919254400 +0000
-@@ -11020,8 +11020,8 @@
++++ b/baseball.scu	2026-10-06 16:11:44.482532583 +0000
+@@ -8184,7 +8184,7 @@
+ }
+ 
+ script HandleCollision@217 collisions {
+-    var slot max_slot box_num face box smth_dist_1 smth_dist_2 sound
++    var slot max_slot box_num face box smth_dist_1 smth_dist_2 sound f line
+ 
+     slot = 1
+     max_slot = array-get-height collisions - 1
+@@ -8215,6 +8215,15 @@
+                 actor.costume 0
+                 sound = call-script GetCollisionSound box[BOX-MATERIAL]
+                 start-script PlayBounceSound sound
++                ; Rogueball easter egg: the page pays $1 for every ball the player drops in the dumpster
++                if (gRogueActive && gBattingTeamInfoIndex == 0) {
++                    inc gRogueDump
++                    sprintf f "%srogue_live.ini" gSaveGamePath
++                    sprintf line "%d,%d" gRogueSeq gRogueDump
++                    write-ini.string f "live" "d" line
++                    undim line
++                    undim f
++                }
+                 gCollideVelX = 0
+                 gCollideVelY = 0
+                 gCollideVelZ = 0
+@@ -11020,8 +11029,8 @@
                          gKidData[MARIA-LUNA][33] = 128
                      }
                      gKidData[MARIA-LUNA][33] = gKidData[MARIA-LUNA][33] + 2
@@ -41,7 +69,7 @@
              }
          }
          if (gTeamInfo[local3][TI-TEAM-NOUN] == 128 || gTeamInfo[local3][TI-TEAM-NOUN] == 126) {
-@@ -11498,8 +11498,22 @@
+@@ -11498,8 +11507,22 @@
          local10 = local9
          local11 = local9
          local12 = local9
@@ -64,7 +92,7 @@
          } else if (gTeamInfo[info_index][TI-PRIMARY-COLOR] == 8 && gTeamInfo[info_index][TI-SECONDARY-COLOR] == 8) {
              local6 = 125
              local6 -= 101
-@@ -13241,6 +13255,14 @@
+@@ -13241,6 +13264,14 @@
              } else {
                  local13 = gTeamInfo[arg0][TI-PRIMARY-COLOR]
                  local14 = gTeamInfo[arg0][TI-SECONDARY-COLOR]
@@ -79,7 +107,7 @@
                  if (not arg6) {
                      if (not (gNetplayActive || global696) && arg0 == gVisitorInfoIndex || (gNetplayActive || global696 && arg0 == 0)) {
                          local15 = gTeamInfo[arg0][TI-PRIMARY-COLOR]
-@@ -13964,7 +13986,7 @@
+@@ -13964,7 +13995,7 @@
  script StartQuickPickupGame@296 field_plus_one {
      gHomeInfoIndex = 1
      gVisitorInfoIndex = 0
@@ -88,7 +116,7 @@
          gGameLength = 12
      }
      if (not gGameMode) {
-@@ -19926,11 +19948,189 @@
+@@ -19926,11 +19957,191 @@
      start-object 72 1
  }
  
@@ -134,6 +162,8 @@
 +    gRoguePending = 1
 +    gGameMode = MODE-PICKUP
 +    gRogueMercy = read-ini.i32 f "setup" "mercy"
++    gRogueIFS = read-ini.i32 f "setup" "ifs"
++    gRogueDump = 0
 +    gNoCommentary = read-ini.i32 f "audio" "nocommentary"
 +    gNoGooch = read-ini.i32 f "audio" "nogooch"
 +    gNoBackgroundSound = read-ini.i32 f "audio" "nobackground"
@@ -279,7 +309,7 @@
          start-script smth_init
      } else {
          if (g_maybe_operating_system == 2) {
-@@ -19969,6 +20169,7 @@
+@@ -19969,6 +20180,7 @@
      if (g_maybe_operating_system == 2) {
          object.class 391 [160]
      }
@@ -806,8 +836,43 @@
      if (gUIInputDevice == INPUT-DEVICE-MOUSE) {
          cursor-on
 --- clean/overhed.scu	2026-10-04 13:04:03.346278057 +0000
-+++ b/overhed.scu	2026-10-04 22:26:25.531969958 +0000
-@@ -2000,7 +2000,7 @@
++++ b/overhed.scu	2026-10-06 16:11:29.963893799 +0000
+@@ -110,6 +110,7 @@
+     if local2 {
+         break-until global504
+         current-room overhed
++        gRogueSingle = 0
+         start-script RunOverheadView
+     } else {
+         gCurrentRoom = 3
+@@ -125,6 +126,7 @@
+         } else {
+             g_smth_play_may_continue = 1
+         }
++        gRogueSingle = 0
+         start-script RunOverheadView
+     }
+ }
+@@ -1497,6 +1499,9 @@
+     }
+     case gPlayEndedReason {
+         PE-GROUND-RULE-DOUBLE {
++            if gRogueSingle {
++                stop-script 0
++            }
+             local0 = 497
+             start-script EnqueueComment DIALOGUE-GROUND-RULE-DOUBLE gBatterKid
+         }
+@@ -1782,7 +1787,7 @@
+                     image.end
+                     break-here.multi 5
+                 }
+-            } else if (gPlayEndedReason == PE-GROUND-RULE-DOUBLE) {
++            } else if (gPlayEndedReason == PE-GROUND-RULE-DOUBLE && not gRogueSingle) {
+                 for local21 = 1 to 4 + {
+                     image.init local22
+                     image.draw
+@@ -2000,7 +2005,7 @@
  }
  
  local-script maybe_handle_basepath_click@2076 arg0 x y arg3 {
@@ -816,7 +881,7 @@
  
      if (not arg0) {
          x = gMouseX
-@@ -2021,7 +2021,15 @@
+@@ -2021,7 +2026,15 @@
                  temp = 1
              }
              gRunnersExtra[gRunnerCursorIndex][RE-SPRINT] = temp
@@ -833,7 +898,7 @@
                  if gRunners[gRunnerCursorIndex][R-DIRECTION] {
                      if (gRunnerCursorDestinationBase > gRunners[gRunnerCursorIndex][R-CUR-BASE]) {
                          gRunners[gRunnerCursorIndex][R-DIRECTION] = FORWARD
-@@ -3345,7 +3353,7 @@
+@@ -3345,7 +3358,7 @@
                  if (gNumOuts < 2) {
                      if (not gBallHasBounced) {
                          if (not gFielderWithBall) {
@@ -842,7 +907,33 @@
                                  speed /= 2
                              }
                          }
-@@ -6389,6 +6397,17 @@
+@@ -4524,7 +4537,7 @@
+             for i = 0 to 3 + {
+                 if (runners[i][R-CUR-BASE] != NONE) {
+                     if (not (gBallWasHit == false && gRunners[i][R-ORDER] == 0)) {
+-                        base = rRunnerStartingBases[i] + 2
++                        base = rRunnerStartingBases[i] + 2 - gRogueSingle
+                         if (base > 4) {
+                             base = 4
+                         }
+@@ -5930,8 +5943,14 @@
+             break-here
+             inc local0
+         } until (gBallVelPhysY < 384000 * gGravity / 60 || local0 > 40)
+-        gPlayEndedReason = PE-INFIELD-FLY
+-        rCaughtFly = true
++        ; Rogueball, Infield Fly Swatter: the call becomes a single (everyone moves up one base)
++        if (gRogueActive && gRogueIFS && gBattingTeamInfoIndex == 0) {
++            gRogueSingle = 1
++            gPlayEndedReason = PE-GROUND-RULE-DOUBLE
++        } else {
++            gPlayEndedReason = PE-INFIELD-FLY
++            rCaughtFly = true
++        }
+     }
+ }
+ 
+@@ -6389,6 +6408,17 @@
          }
          FIELDER-PITCHER {
              if g_maybe_play_is_ready_to_end {

@@ -382,6 +382,26 @@
   .joker .art.live { gap: 2px; } .joker .art .shead { font-size: 1.05em; color: #fff; }
   .joker .art .spos { color: #7dff7d; } .joker .art .sneg { color: #ff7a6a; }
   #tip div { white-space: pre-line; }
+  /* Infield Fly Swatter */
+  .swat { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -50%); animation: swatout 2.5s forwards; }
+  .swat svg { display: block; overflow: visible; }
+  .swat .sw-flyin { animation: flyin .9s ease-in-out forwards; }
+  .swat .sw-wing { transform-box: fill-box; transform-origin: 50% 100%; animation: buzz .05s linear infinite alternate; }
+  .swat .sw-fly { transform-box: view-box; animation: squish 2.5s forwards; }
+  .swat .sw-bat { transform-origin: 0 -170px; transform: rotate(-80deg) translate(0, 0); animation: swing 2.5s forwards; }
+  .swat .sw-splat { transform-box: fill-box; transform-origin: 50% 50%; transform: scale(0); animation: splat 2.5s forwards; }
+  .swat .sw-txt { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 0) scale(0); font-family: "Press Start 2P", monospace; font-size: 34px; color: #ffd23a;
+    text-shadow: 4px 4px 0 #000, 0 0 14px rgba(255,210,58,.8); text-transform: uppercase; text-align: center; white-space: nowrap; animation: swtxt 2.5s forwards; }
+  .swat .sw-txt small { display: block; font-size: 22px; color: #7dff7d; margin-top: 8px; }
+  @keyframes flyin { 0% { transform: translate(-150px, -60px); } 25% { transform: translate(-90px, 20px); } 50% { transform: translate(-30px, -40px); } 75% { transform: translate(20px, 10px); } 100% { transform: translate(0, 0); } }
+  @keyframes buzz { from { transform: scaleY(1) rotate(-8deg); } to { transform: scaleY(.3) rotate(8deg); } }
+  @keyframes swing { 0%, 30% { transform: rotate(-80deg); } 36% { transform: rotate(0deg); } 46% { transform: rotate(0deg); } 58%, 100% { transform: rotate(-42deg); } }
+  @keyframes squish { 0%, 35% { transform: scale(1, 1); } 37%, 100% { transform: scale(1.6, .25); } }
+  @keyframes splat { 0%, 35% { transform: scale(0) rotate(0deg); } 40% { transform: scale(1.3) rotate(20deg); } 46%, 100% { transform: scale(1) rotate(12deg); } }
+  @keyframes swtxt { 0%, 38% { transform: translate(-50%, 0) scale(0); } 46% { transform: translate(-50%, 0) scale(1.2); } 52%, 100% { transform: translate(-50%, 0) scale(1); } }
+  @keyframes swatout { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+  .pill.r-rare { border-color: var(--r-rare); } .pill.r-epic { border-color: var(--r-epic); } .pill.r-legendary { border-color: var(--r-legendary); }
+  #tip .spdtab { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--yellow-d); }
 </style>
 </head>
 <body>
@@ -550,7 +570,33 @@ const SPEED_TIERS = [[3, '0-19'], [4, '20-39'], [5, '40-59'], [6, '60-79'], [7, 
     if (prev && prev.score === p.score) { p.mr = prev.mr; p.val = prev.val; }
     else { p.mr = i + 1; p.val = Math.round(99 - i * 87 / (N - 1)); }
   });
+  // the CPU picks its teams on a different scale: pitching and defense count as much as hitting
+  for (const p of PLAYERS) { const top = ['heat', 'slowball', 'lhook', 'rhook'].map(k => p[k] || 0).sort((a, b) => b - a); p.pitch = 0.3 * p.stamina + 0.35 * top[0] + 0.35 * top[1]; p.glove = (p.arm + p.throwing + p.coordination) / 3; }
+  const pi = pct('pitch'), gl = pct('glove');
+  for (const p of PLAYERS) p.cscore = 0.3 * mv(p.mv ?? 0) + 0.7 * (0.4 * pi(p.pitch) + 0.3 * gl(p.glove) + 0.3 * (0.5 * sw(p.swing) + 0.25 * sp(p.speed) + 0.25 * hi(p.hitting)));
+  const cf = {};
+  for (const p of PLAYERS) { const k = root(p); cf[k] = Math.max(cf[k] ?? -1, p.cscore); }
+  for (const p of PLAYERS) p.cscore = cf[root(p)];
+  PLAYERS.slice().sort((a, b) => b.cscore - a.cscore).forEach((p, i, a) => { p.cmr = i && a[i - 1].cscore === p.cscore ? a[i - 1].cmr : i + 1; });
 })();
+/* CPU-only custom players for the end game. Each one plays as an existing kid (base) with new stats and a new name. */
+const ALL_PITCHES = ['heat', 'slowball', 'lhook', 'rhook', 'corkscrew', 'zigzag', 'freeze', 'fireball', 'spitball', 'crazy', 'slomo', 'elevator'];
+const CUSTOMS = [
+  { id: 901, base: 136, name: 'Max Power', set: { swing: 125, hitting: 100, height: 3 }, blurb: '125 power, 100 contact.' },
+  { id: 902, base: 233, name: 'Ace Wilson', ace: true, set: { swing: 90, hitting: 90, stamina: 125, ...Object.fromEntries(ALL_PITCHES.map(k => [k, 125])) },
+    blurb: 'Never tires. Throws heat, slowball, both hooks, freeze, corkscrew, zig zag and spitball, all at 125. Hitting her power-up pitches earns nothing.' },
+  { id: 903, base: 118, name: 'Goldy Glove', set: { coordination: 125, arm: 125, speed: 125, height: 5 }, blurb: '125 coordination, arm and speed.' },
+];
+const CUSTOM = {};
+for (const c of CUSTOMS) {
+  const b = BY_ID[c.base];
+  const p = { ...b, ...c.set, id: c.id, name: c.name, kind: 'custom', base: c.base, clone_of: null, ace: !!c.ace, blurb: c.blurb, mr: 1, val: 99, cmr: 1, mv: b.mv };
+  p.t = tierOf(p.speed);
+  const top = ['heat', 'slowball', 'lhook', 'rhook'].map(k => p[k] || 0).sort((a, b) => b - a);
+  p.pitch = 0.3 * p.stamina + 0.35 * top[0] + 0.35 * top[1]; p.glove = (p.arm + p.throwing + p.coordination) / 3;
+  PLAYERS.push(p); BY_ID[p.id] = p; CUSTOM[p.id] = p;
+}
+const gameId = id => CUSTOM[id] ? CUSTOM[id].base : id;
 
 /* ======================================================================
    TUNING
@@ -591,6 +637,10 @@ const CONFIG = {
   difficulty: g => g <= 3 ? 1 : g <= 8 ? 3 : 2,
   oppCenterRank: g => Math.max(14, 190 - 13 * (g - 1)),
   oppBoost: g => Math.max(0, (g - 15) * 2),
+  // from game 10 on the CPU brings its own cards and boosts, more and rarer each game
+  cpuCards: g => g < 10 ? 0 : Math.min(6, 1 + Math.floor((g - 10) / 2)),
+  cpuBoosts: g => g < 10 ? 0 : Math.min(12, g - 9),
+  cpuRarity: g => g < 14 ? ['common', 'rare'] : g < 18 ? ['rare', 'epic'] : ['epic', 'legendary'],
 };
 
 /* augments: d = deltas, set = exact value, min = at least; target 'pick' asks for a player.
@@ -811,7 +861,7 @@ function autoOrder(ids) {
 /* ======================================================================
    POOL + STATE
    ====================================================================== */
-const POOL = PLAYERS.slice();
+const POOL = PLAYERS.filter(p => !CUSTOM[p.id]);
 const rnd = n => Math.floor(Math.random() * n);
 const pick = a => a[rnd(a.length)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -824,6 +874,36 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run, met
 function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { run = s.run; meta = s.meta || meta; settings = { ...settings, ...(s.settings || {}) }; if (run && run.shop) run.shop = run.shop.map(x => typeof x === 'string' ? { type: 'card', id: x } : x); } } catch (e) {} }
 const PU_KEYS = CONFIG.powerups.map(p => p.k);
 const boostsOn = pid => run.augments.filter(x => x.on === pid && AUG[x.id]);
+// Infield Fly Swatter: a fly buzzes in, the swatter comes down, splat
+function flySwat() {
+  const c = $('canvas').getBoundingClientRect(), el = document.createElement('div');
+  el.className = 'swat';
+  el.style.left = (c.left + c.width / 2) + 'px'; el.style.top = (c.top + c.height * .42) + 'px';
+  el.innerHTML = `<svg viewBox="-160 -130 320 260" width="320" height="260">
+    <g class="sw-splat"><path d="M0,-46 L12,-14 L44,-26 L22,2 L50,22 L14,18 L8,50 L-6,20 L-40,38 L-20,6 L-50,-10 L-16,-14 Z" fill="#ffd23a" stroke="#000" stroke-width="4"/></g>
+    <g class="sw-fly"><g class="sw-flyin">
+      <ellipse class="sw-wing" cx="-8" cy="-12" rx="12" ry="7" fill="#d9f2ff" fill-opacity=".85" stroke="#000" stroke-width="2"/>
+      <ellipse class="sw-wing sw-w2" cx="8" cy="-12" rx="12" ry="7" fill="#d9f2ff" fill-opacity=".85" stroke="#000" stroke-width="2"/>
+      <ellipse cx="0" cy="2" rx="13" ry="10" fill="#2b2b2b" stroke="#000" stroke-width="2"/>
+      <circle cx="-7" cy="-4" r="5" fill="#c0261a" stroke="#000" stroke-width="2"/><circle cx="7" cy="-4" r="5" fill="#c0261a" stroke="#000" stroke-width="2"/>
+    </g></g>
+    <g class="sw-bat"><rect x="-6" y="-170" width="12" height="120" rx="4" fill="#b07a3a" stroke="#000" stroke-width="4"/>
+      <rect x="-42" y="-62" width="84" height="74" rx="10" fill="#e8402a" stroke="#000" stroke-width="5"/>
+      <path d="M-30,-50 V0 M-15,-50 V0 M0,-50 V0 M15,-50 V0 M30,-50 V0 M-38,-38 H38 M-38,-22 H38 M-38,-6 H38" stroke="#000" stroke-width="2.5" opacity=".55"/></g>
+  </svg><div class="sw-txt">Swatted!<small>Single</small></div>`;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
+  try {
+    const A = window.AudioContext || window.webkitAudioContext, ac = flySwat.ac || (flySwat.ac = new A()), t = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 220; lfo.frequency.value = 28; lg.gain.value = 40; lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .1); g.gain.setValueAtTime(.05, t + .8); g.gain.exponentialRampToValueAtTime(.0001, t + .9);
+    o.connect(g); g.connect(ac.destination); o.start(t); lfo.start(t); o.stop(t + .95); lfo.stop(t + .95);
+    const len = .18, buf = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const n = ac.createBufferSource(), ng = ac.createGain(), f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1400;
+    n.buffer = buf; ng.gain.value = .5; n.connect(f); f.connect(ng); ng.connect(ac.destination); n.start(t + .9);
+  } catch (e) {}
+}
 // Cement Gardens easter egg: a ball in the dumpster pays $1
 function dumpsterCoin(n) {
   run.money += n; save(); Panel.money && Panel.money(); try { topbar(); } catch (e) {}
@@ -875,6 +955,7 @@ function gameLayers(opts = {}) {
     else if (C.who === 'opp' && run.next) run.next.ids.forEach(id => add(id, C));
   }
   if (run.next && run.next.boost) run.next.ids.forEach(id => add(id, { d: { hitting: run.next.boost, swing: run.next.boost, eye: run.next.boost } }));
+  if (run.next) for (const [id, src] of cpuSources(run.next)) add(id, src);
   if (opts.combos !== false) for (const [id, kb] of Object.entries(kidBonuses())) { const m = L[id] || (L[id] = { d: {}, set: {}, min: {} }); m.cb = kb.d; }
   return L;
 }
@@ -1017,6 +1098,7 @@ function statSources(id) {
   if (opp) {
     for (const c of activeCards()) { const C = CARD[c.id]; if (C.who === 'opp') out.push({ src: C.name, txt: C.text, d: C.d || {}, set: {}, min: C.min || {} }); }
     if (run.next.boost) out.push({ src: 'CPU boost', d: { hitting: run.next.boost, swing: run.next.boost, eye: run.next.boost }, set: {}, min: {} });
+    for (const [x, src] of cpuSources(run.next)) if (x === id) out.push(src);
     return out;
   }
   for (const a of run.augments) {
@@ -1128,19 +1210,65 @@ function applyRoll(roll) {
   n.field = roll.field; n.innings = roll.innings; n.tee = roll.tee;
   n.difficulty = roll.tee ? 4 : CONFIG.difficulty(run.game);
 }
+// [id, effect] pairs for the CPU's own cards and boosts
+function cpuSources(n) {
+  const out = [];
+  for (const cid of n.cpuCards || []) {
+    const C = CARD[cid]; if (!C) continue;
+    const ids = C.who === 'team' ? n.ids : C.who === 'slots' ? C.slots.map(s => n.order[s]) : C.who === 'pos' ? n.ids.filter(id => n.pos[id] === C.pos) : n.ids.filter(id => [0, 1, 2].includes(n.pos[id]));
+    ids.filter(id => id != null).forEach(id => out.push([id, { d: C.d || {}, set: {}, min: C.min || {}, src: C.name, txt: C.text }]));
+  }
+  for (const b of n.cpuBoosts || []) { const A = AUG[b.id]; if (A && n.ids.includes(b.on)) out.push([b.on, { d: A.d || {}, set: A.set || {}, min: A.min || {}, src: A.name, txt: A.text }]); }
+  return out;
+}
+const cpuCardOk = C => !C.retired && !C.cond && !C.perKid && !C.perPro && !C.freePu && !C.freeShop && !C.ifs && ['team', 'slots', 'pos', 'of'].includes(C.who) && (C.d || C.min);
+const cpuBoostOk = A => !A.retired && A.target === 'pick' && !A.cond && !A.headstart && !A.money && !A.pu && !A.sacrifice && (A.d || A.set || A.min);
+function cpuLoadout(n, g) {
+  n.cpuCards = []; n.cpuBoosts = [];
+  const nc = CONFIG.cpuCards(g), nb = CONFIG.cpuBoosts(g), rars = CONFIG.cpuRarity(g);
+  const fams = shuffle([...new Set(CARDS.filter(cpuCardOk).map(C => C.name))]);
+  for (const name of fams) {
+    if (n.cpuCards.length >= nc) break;
+    const opts = CARDS.filter(C => C.name === name && cpuCardOk(C)).sort((a, b) => RAR_RANK[b.rarity] - RAR_RANK[a.rarity]);
+    const best = opts.find(C => rars.includes(C.rarity)) || opts.find(C => RAR_RANK[C.rarity] < RAR_RANK[rars[0]]) || opts[opts.length - 1];
+    if (best) n.cpuCards.push(best.id);
+  }
+  const boosts = AUGMENTS.filter(cpuBoostOk), pitcher = n.ids.find(id => n.pos[id] === POS.indexOf('P'));
+  for (let i = 0; i < nb; i++) {
+    const A = pick(boosts), pitchy = Object.keys({ ...A.d, ...A.set, ...A.min }).some(k => PITCHES.includes(k) || k === 'stamina');
+    const plain = n.ids.filter(id => !CUSTOM[id]);
+    let on = pitchy && pitcher != null && !CUSTOM[pitcher] ? pitcher : pick(plain), tries = 0;
+    while (n.cpuBoosts.some(b => b.on === on && b.id === A.id) && tries++ < 10) on = pick(plain);
+    n.cpuBoosts.push({ id: A.id, on });
+  }
+}
 function makeOpponent() {
   const g = run.game, taken = owned(), rival = g % CONFIG.rivalryEvery === 0;
   const center = Math.max(8, CONFIG.oppCenterRank(g) - (rival ? 25 : 0));
-  const pool = POOL.filter(p => !taken.has(p.id) && p.mr >= center - 35 && p.mr <= center + 35);
+  const pool = POOL.filter(p => !taken.has(p.id) && p.cmr >= center - 35 && p.cmr <= center + 35);
   const ids = [];
-  for (const key of ['C', 'P', 'SS', '1B', 'OF', 'OF', 'OF']) {
+  for (const key of ['P', 'C', 'SS', '1B', 'OF', 'OF', 'OF']) {
     let opts = pool.filter(p => !ids.includes(p.id) && NEED_KEYS[key](p));
-    if (!opts.length) opts = POOL.filter(p => !taken.has(p.id) && !ids.includes(p.id) && NEED_KEYS[key](p)).sort((a, b) => Math.abs(a.mr - center) - Math.abs(b.mr - center)).slice(0, 8);
+    if (!opts.length) opts = POOL.filter(p => !taken.has(p.id) && !ids.includes(p.id) && NEED_KEYS[key](p)).sort((a, b) => Math.abs(a.cmr - center) - Math.abs(b.cmr - center)).slice(0, 8);
+    // late in a run the CPU sends its best arm to the mound
+    if (key === 'P' && g >= 8) opts = POOL.filter(p => !taken.has(p.id) && NEED_KEYS.P(p) && !(p.clone_of && BY_ID[p.clone_of] && !taken.has(p.clone_of))).sort((a, b) => b.pitch - a.pitch).slice(0, Math.max(2, 16 - g));
     if (opts.length) ids.push(pick(opts).id);
   }
   for (const p of shuffle(pool.slice())) { if (ids.length >= 9) break; if (!ids.includes(p.id)) ids.push(p.id); }
+  // end game: custom stars join the CPU (1 from game 14, 2 from 18, all 3 from 22)
+  const nCustom = g >= 22 ? 3 : g >= 18 ? 2 : g >= 14 ? 1 : 0;
+  for (const c of shuffle(CUSTOMS.slice()).slice(0, nCustom)) {
+    if (taken.has(c.base)) continue;
+    const bi = ids.indexOf(c.base);
+    let slot;
+    if (bi >= 0) slot = bi;
+    else if (c.ace) { slot = ids.findIndex(id => NEED_KEYS.P(BY_ID[id])); if (slot < 0) slot = 0; }
+    else { const nonP = ids.map((id, i) => i).filter(i => !NEED_KEYS.P(BY_ID[ids[i]]) && !CUSTOM[ids[i]]); slot = nonP.length ? pick(nonP) : ids.length - 1; }
+    ids[slot] = c.id;
+  }
   run.next = { ids, pos: autoPositions(ids), order: autoOrder(ids), rival, boost: CONFIG.oppBoost(g) + (rival ? 4 : 0),
-    avgRank: Math.round(ids.reduce((a, i) => a + BY_ID[i].mr, 0) / ids.length) };
+    avgRank: Math.round(ids.reduce((a, i) => a + BY_ID[i].cmr, 0) / ids.length) };
+  cpuLoadout(run.next, g);
   applyRoll(rollGame());
 }
 function refreshTradeBlock() {
@@ -1206,7 +1334,7 @@ function startRound() {
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const FACE_DATA = /*FACES_JSON*/null, FIELD_DATA = /*FIELDS_JSON*/null;
-const FACE = id => FACE_DATA ? FACE_DATA.img[FACE_DATA.map[id]] : `assets/faces/${id}.png`;
+const FACE = id => { id = gameId(id); return FACE_DATA ? FACE_DATA.img[FACE_DATA.map[id]] : `assets/faces/${id}.png`; };
 const FIELD_IMG = f => FIELD_DATA ? FIELD_DATA[f] : `assets/fields/${f}.png`;
 const PARK = ['Dirt Yards', 'Playground Commons', 'Cement Gardens', 'Eckman Acres', 'Big City Stadium', 'Super Colossal Dome', 'Steele Stadium', 'Tin Can Alley', 'Parks Department', 'Sandy Flats'];
 const DIFF = { 1: 'Easy', 2: 'Hard', 3: 'Medium', 4: 'Tee ball' };
@@ -1227,12 +1355,13 @@ function cardHTML(id, opts = {}) {
   const base = BY_ID[id], p = opts.boosted ? S(id) : base;
   const raw = [['Contact', 'hitting'], ['Power', 'swing'], ['Vision', 'eye'], ['Speed', 'speed'], ['Arm', 'arm'], ['Throw acc', 'throwing'], ['Coord', 'coordination'], ['Stamina', 'stamina']];
   const pitches = PITCHES.filter(k => base[k] > 0 || p[k] > 0).sort((a, b) => p[b] - p[a]).map(k => `${PITCH_LABEL[k]} ${p[k]}`).join(', ');
-  const kind = base.kind === 'pro' ? 'MLB pro' : base.kind === 'kid' ? 'Backyard kid' : base.kind === 'clanky' ? 'Robot' : base.clone_of ? `Clone of ${BY_ID[base.clone_of].name}` : 'Generic kid';
+  const kind = base.kind === 'custom' ? 'CPU star' : base.kind === 'pro' ? 'MLB pro' : base.kind === 'kid' ? 'Backyard kid' : base.kind === 'clanky' ? 'Robot' : base.clone_of ? `Clone of ${BY_ID[base.clone_of].name}` : 'Generic kid';
   const cls = k => p[k] > base[k] ? 'up' : p[k] < base[k] ? 'down' : '';
   return `<button class="pcard ${base.kind === 'pro' ? 'pro' : ''}" data-id="${id}">
     <div class="ovr num">${value(base)}</div>
     <div class="top"><img class="face" src="${FACE(id)}" alt=""><div><div class="nm">${esc(base.name)}</div>
     <div class="meta">${kind}, height ${p.height}, ${base.handedness === 2 ? 'lefty' : 'righty'}</div></div></div>
+    ${base.blurb ? `<p class="small" style="margin:6px 0 0">${esc(base.blurb)}</p>` : ''}
     <div class="tags">${tagsHTML(p) || '<span class="tag">2B / 3B</span>'}</div>
     ${statBars(base, p)}
     ${boostsHTML(id)}
@@ -1464,6 +1593,8 @@ function renderHub() {
     <img class="oppfield" src="${FIELD_IMG(n.field)}" alt="">
     <dl class="facts"><dt>Team</dt><dd>${esc(cpuTeamName(n))}</dd><dt>Park</dt><dd>${PARK[n.field]}${n.tee ? ', tee ball' : ''}</dd><dt>Length</dt><dd>${n.innings} innings, mercy at ${CONFIG.mercy}</dd>
     <dt>CPU</dt><dd>${DIFF[n.difficulty]}${n.boost ? `, hitters +${n.boost}` : ''}</dd></dl>
+    ${(n.cpuCards || []).length ? `<div class="gh" style="margin-top:8px">Their cards</div><div class="chips">${n.cpuCards.map(cid => `<span class="pill r-${CARD[cid].rarity}" data-tiptext="${esc('t:' + CARD[cid].name + ' (' + RAR_LABEL[CARD[cid].rarity] + ')|' + CARD[cid].text)}">${esc(CARD[cid].name)}</span>`).join('')}</div>` : ''}
+    ${(n.cpuBoosts || []).length ? `<div class="gh" style="margin-top:8px">Their boosts</div><div class="chips">${n.cpuBoosts.map(b => `<span class="pill" data-tiptext="${esc('t:' + AUG[b.id].name + '|' + AUG[b.id].text)}">${esc(AUG[b.id].name)}: ${esc(shortName(b.on))}</span>`).join('')}</div>` : ''}
     <div class="chips" style="margin-top:8px">${n.order.map(id => `<button class="pill" data-card="${id}" data-tip="${id}">${POS[n.pos[id]]} ${esc(BY_ID[id].name)}</button>`).join('')}</div>
     <div class="row-actions"><button class="btn big" id="playBtn">Play ball</button></div>`;
   $('oppBox').querySelectorAll('[data-card]').forEach(b => b.onclick = () => showCard(+b.dataset.card, { boosted: true }));
@@ -1520,7 +1651,7 @@ function stackArt(C, f) {
 }
 function jokerHTML(cid, opts = {}) {
   const C = CARD[cid], live = opts.live ? stackArt(C, opts.f) : null;
-  return `<div class="joker ${C.rarity} ${opts.tilt ? 'tilt' : ''}">${opts.tag ? '<span class="ck">Card</span>' : ''}<span class="rr">${RAR_LABEL[C.rarity]}</span><h4>${esc(C.name)}</h4><div class="art ${live ? 'live' : ''}">${live || cardArt(C)}</div><p>${esc(C.text)}</p>${opts.on != null ? `<span class="on">On ${esc(BY_ID[opts.on].name)}</span>` : ''}</div>`;
+  return `<div class="joker ${C.rarity} ${opts.tilt ? 'tilt' : ''}"${/speed/i.test(C.text) ? ` data-tiptext="${esc('t:' + C.name + '|' + C.text)}"` : ''}>${opts.tag ? '<span class="ck">Card</span>' : ''}<span class="rr">${RAR_LABEL[C.rarity]}</span><h4>${esc(C.name)}</h4><div class="art ${live ? 'live' : ''}">${live || cardArt(C)}</div><p>${esc(C.text)}</p>${opts.on != null ? `<span class="on">On ${esc(BY_ID[opts.on].name)}</span>` : ''}</div>`;
 }
 function cardArt(C) {
   const ab = { swing: 'POW', hitting: 'CON', eye: 'VIS', speed: 'SPD', arm: 'ARM', coordination: 'CRD', stamina: 'STA' };
@@ -1546,7 +1677,7 @@ function renderShop() {
     const label = st.kind === 'owned' ? 'Owned' : st.kind === 'upgrade' ? `Upgrade $${pr}` : `Buy $${pr}`;
     const btn = `<button class="btn sm" data-buy="${i}" ${can ? '' : 'disabled'} ${st.kind === 'upgrade' ? `title="Trades in your ${RAR_LABEL[CARD[st.old.id].rarity]} ${esc(CARD[st.old.id].name)} (worth $${cardSell(st.old.id)})"` : ''}>${label}</button>`;
     if (it.type === 'card') return `<div class="sitem">${jokerHTML(it.id, { tag: true, tilt: true })}${st.kind === 'upgrade' ? `<small class="small">Replaces your ${RAR_LABEL[CARD[st.old.id].rarity].toLowerCase()}</small>` : ''}${btn}</div>`;
-    if (it.type === 'aug') { const a = AUGMENTS.find(x => x.id === it.id); return `<div class="sitem"><div class="ticket tilt"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div>${btn}</div>`; }
+    if (it.type === 'aug') { const a = AUGMENTS.find(x => x.id === it.id); return `<div class="sitem"><div class="ticket tilt"${/speed/i.test(a.text) ? ` data-tiptext="${esc('t:' + a.name + '|' + a.text)}"` : ''}><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div>${btn}</div>`; }
     return `<div class="sitem"><div class="putile tilt"><img class="${it.id === 'juice' ? 'j' : ''}" src="${PU_ICON ? PU_ICON[it.id] : ''}" alt=""><small>${esc(puLabel(it.id))}</small></div>${btn}</div>`;
   }).join('');
   $('shopCards').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buyShop(+b.dataset.buy));
@@ -1684,11 +1815,13 @@ function startGame() {
   const n = run.next;
   run.seq++;
   const mine = Array(9).fill(0), theirs = Array(9).fill(0);
-  run.roster.forEach(id => mine[run.pos[id]] = id); n.ids.forEach(id => theirs[n.pos[id]] = id);
+  run.roster.forEach(id => mine[run.pos[id]] = id); n.ids.forEach(id => theirs[n.pos[id]] = gameId(id));
   // stat changes: deltas where possible (keeps the game's own sibling bonuses), exact values for set/min effects
   const L = gameLayers({ combos: false }), mods = [];
   const cpu = cpuTeam(n);
   for (const id of [...run.roster, ...n.ids]) {
+    // custom players: the game only knows the base kid, so every stat goes over as an exact value
+    if (CUSTOM[id]) { const f = finalStats(id, L); for (const [k, c] of Object.entries(COL)) mods.push([gameId(id), c, Math.round(f[k] ?? 0), 1]); continue; }
     const m = L[id]; if (!m) continue;
     const f = finalStats(id, L), keys = new Set([...Object.keys(m.d), ...Object.keys(m.set), ...Object.keys(m.min)]);
     for (const k of keys) {
@@ -1705,9 +1838,11 @@ function startGame() {
   let ini = `[boot]\nskipintro=1\n[setup]\nseq=${run.seq}\nhalfinnings=${n.innings * 2}\ndifficulty=${n.difficulty}\nfield=${n.field}\nnoerrors=0\nhotcold=0\nmercy=${CONFIG.mercy}\nifs=${activeCards().some(c => CARD[c.id].ifs) ? 1 : 0}\nautoplay=${st.autoplay ? 1 : 0}\n`;
   ini += `[audio]\nnomusic=${st.music ? 0 : 1}\nnocommentary=${st.commentary ? 0 : 1}\nnogooch=${st.gooch ? 0 : 1}\nnobackground=${st.crowd ? 0 : 1}\nnoplayertalking=${st.playerTalking ? 0 : 1}\nnoplayerchatter=${st.playerChatter ? 0 : 1}\n`;
   ini += `[name]\nadj=${run.team.adj}\nnoun=${run.team.noun}\ncolor1=${run.team.c1}\ncolor2=${run.team.c2}\nbasic1=${basicOf(run.team.c1)}\nbasic2=${basicOf(run.team.c2)}\ncpunoun=${cpu.noun}\ncpuadj=${cpu.adj}\ncpuc1=${cpu.c1}\ncpuc2=${cpu.c2}\n`;
+  const cus = n.ids.filter(id => CUSTOM[id]);
+  ini += `[names]\n` + cus.map((id, i) => `k${i}=${CUSTOM[id].base}\nn${i}=${CUSTOM[id].name}\n`).join('') + `ace=${(cus.find(id => CUSTOM[id].ace) && CUSTOM[cus.find(id => CUSTOM[id].ace)].base) || 0}\n`;
   ini += `[powerups]\n` + PU_KEYS.map(k => `${k}=${sent[k]}\n`).join('');
   ini += `[team]\n`;
-  for (let i = 0; i < 9; i++) ini += `u${i}=${mine[i]}\nub${i}=${run.order[i]}\nc${i}=${theirs[i]}\ncb${i}=${n.order[i]}\n`;
+  for (let i = 0; i < 9; i++) ini += `u${i}=${mine[i]}\nub${i}=${run.order[i]}\nc${i}=${theirs[i]}\ncb${i}=${gameId(n.order[i])}\n`;
   ini += `[mods]\nn=${mods.length}\n` + mods.map(([k, c, d, s], i) => `k${i}=${k}\nc${i}=${c}\nd${i}=${d}\ns${i}=${s}\n`).join('');
   const conds = condList().slice(0, 64), hs = headStarters().slice(0, 10);
   ini += `[cond]\nn=${conds.length}\n` + conds.map((x, i) => `k${i}=${x.k}\nc${i}=${COND[x.c].code}\np${i}=${x.d.swing || 0}\nh${i}=${x.d.hitting || 0}\n`).join('');
@@ -1765,7 +1900,7 @@ function offerAugments() { return shuffle(AUGMENTS.filter(a => !a.retired).map(a
 function renderAugment() {
   topbar();
   $('augCards').classList.add('tix');
-  $('augCards').innerHTML = run.augOffer.map(id => { const a = AUGMENTS.find(x => x.id === id); return `<button class="augpick" data-aug="${id}"><div class="ticket tilt"><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div></button>`; }).join('');
+  $('augCards').innerHTML = run.augOffer.map(id => { const a = AUGMENTS.find(x => x.id === id); return `<button class="augpick" data-aug="${id}"><div class="ticket tilt"${/speed/i.test(a.text) ? ` data-tiptext="${esc('t:' + a.name + '|' + a.text)}"` : ''}><span class="kind">Boost</span><h4>${esc(a.name)}</h4><p>${esc(a.text)}</p></div></button>`; }).join('');
   $('augCards').querySelectorAll('[data-aug]').forEach(b => b.onclick = () => takeAugment(b.dataset.aug));
   const free = run.freeRerolls > 0;
   $('augReroll').textContent = free ? `Reroll (free, ${run.freeRerolls} left)` : `Reroll ($${run.augRerollCost})`;
@@ -1838,7 +1973,7 @@ function resume() {
     const t = e.target.closest('[data-tip],[data-tiptext]');
     if (!t || e.pointerType === 'touch') { if (!t) tip.style.display = 'none'; return; }
     const tt = t.dataset.tiptext || '';
-    tip.innerHTML = tt === 'speed' ? speedHTML() : tt.startsWith('t:') ? (([a, b]) => `<div class="h"><b>${esc(a)}</b></div><div>${esc(b)}</div>`)(tt.slice(2).split('|')) : html(+t.dataset.tip); tip.style.display = 'block';
+    tip.innerHTML = tt === 'speed' ? speedHTML() : tt.startsWith('t:') ? (([a, b]) => `<div class="h"><b>${esc(a)}</b></div><div>${esc(b)}</div>${/speed/i.test(b) ? `<div class="spdtab">${speedHTML()}</div>` : ''}`)(tt.slice(2).split('|')) : html(+t.dataset.tip); tip.style.display = 'block';
   });
   document.addEventListener('pointermove', e => {
     if (tip.style.display !== 'block') return;
@@ -1974,7 +2109,8 @@ const Panel = (() => {
   }
   function feed(v) {
     if (!run || v[0] !== run.seq) return;
-    const [, kid, team, on, pitches, fouls, swing, outs, half, bp, bc, pu1, pu2, pu3, pu4, jz, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs] = v;
+    let [, kid, team, on, pitches, fouls, swing, outs, half, bp, bc, pu1, pu2, pu3, pu4, jz, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs] = v;
+    if (team === 1 && run.next) { const c = run.next.ids.find(id => CUSTOM[id] && CUSTOM[id].base === kid); if (c) kid = c; }
     live = { kid, team, on, pitches, fouls, swing, outs, half, bp, bc, balls, strikes, len, r0, r1, fat, mom, dbl, trp, rs };
     renderPu({ alum: pu1, line: pu2, under: pu3, cbunt: pu4, juice: jz });
     renderGame(); renderBat(); renderCards();
@@ -1991,7 +2127,7 @@ const Engine = (() => {
   const IN = SAVE_DIR + '/baseball2001-rogue_in.ini', OUT = SAVE_DIR + '/baseball2001-rogue_out.ini', LIVE = SAVE_DIR + '/baseball2001-rogue_live.ini';
   const PATCHES = { 'baseball 2001.he0': 'patches/he0.bbrp', 'baseball 2001.(a)': 'patches/a.bbrp', 'baseball 2001.(b)': 'patches/b.bbrp' };
   const NEEDED = ['baseball 2001.he0', 'baseball 2001.(a)', 'baseball 2001.(b)', 'baseball 2001.he2', 'baseball 2001.he4', 'baseball 2001.he9'];
-  const PATCH_VER = '16';
+  const PATCH_VER = '18';
   let booted = false, ready = false, onReady = null, pollTimer = null, liveTimer = null;
   const sync = populate => new Promise((res, rej) => FS.syncfs(populate, e => e ? rej(e) : res()));
   const exists = p => FS.analyzePath(p).exists;
@@ -2014,11 +2150,16 @@ const Engine = (() => {
     if (w !== nn || crc32(out) !== nc) throw new Error('patched file failed its check');
     return out;
   }
+  // files are collected across picks, so a CD install can be finished by picking the disc (or wherever the big files are) second
+  const byName = {};
   async function importEntries(entries, status) {
-    const byName = {};
     for (const e of entries) { const base = e.rel.split('/').pop().toLowerCase(); if (NEEDED.includes(base)) byName[base] = e.file; }
-    const missing = NEEDED.filter(n => !byName[n]);
-    if (missing.length) { status('Missing: ' + missing.join(', ') + '. Pick the folder that holds "baseball 2001.he0".', true); return false; }
+    const missing = NEEDED.filter(n => !byName[n]), found = NEEDED.filter(n => byName[n]);
+    if (missing.length) {
+      const cd = missing.some(n => n.endsWith('.(a)') || n.endsWith('.he2'));
+      status(`Found ${found.length} of 6 files. Still need: ${missing.join(', ')}.` + (cd ? ' A CD install leaves the big files on the disc. Pick the CD (or a copy of it) now and they get added to what you already picked.' : ' Pick the folder that has them.'), true);
+      return false;
+    }
     mkdirp(GAME_DIR);
     for (const n of NEEDED) {
       status(`Reading ${n}…`);
@@ -2066,10 +2207,11 @@ const Engine = (() => {
     FS.writeFile(IN, ini);
     setPlaying(true); $('canvas').focus();
     clearInterval(pollTimer); clearInterval(liveTimer);
-    let lastLive = '', lastDump = 0;
+    let lastLive = '', lastDump = 0, lastSwat = 0;
     liveTimer = setInterval(async () => {
       const r = await readOut(LIVE).catch(() => null);
       if (r && r.s && r.s !== lastLive) { lastLive = r.s; Panel.feed(r.s.split(',').map(Number)); }
+      if (r && r.w && run) { const [sq, n] = r.w.split(',').map(Number); if (sq === run.seq && n > lastSwat) { lastSwat = n; flySwat(); } }
       if (r && r.d && run) { const [sq, n] = r.d.split(',').map(Number); if (sq === run.seq && n > lastDump) { const add = n - lastDump; lastDump = n; dumpsterCoin(add); } }
     }, 400);
     pollTimer = setInterval(async () => {
@@ -2170,7 +2312,7 @@ Engine.whenReady(() => Engine.hasGame() ? showTitle() : show('scr-import'));
   });
   document.addEventListener('pointerout', e => { const t = e.target.closest && e.target.closest('.tilt'); if (t && !t.contains(e.relatedTarget)) ['--rx', '--ry', '--mx', '--my'].forEach(k => t.style.removeProperty(k)); });
 })();
-window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment, dumpsterCoin, renderAugment };
+window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment, dumpsterCoin, renderAugment, flySwat, makeOpponent, PLAYERS };
 })();
 </script>
 <script src="scummvm.js"></script>

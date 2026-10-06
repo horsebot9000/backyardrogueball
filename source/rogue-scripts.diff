@@ -1,6 +1,6 @@
 --- clean/project.scu	2026-10-04 13:04:03.339109196 +0000
-+++ b/project.scu	2026-10-06 16:11:29.960195308 +0000
-@@ -1160,6 +1160,31 @@
++++ b/project.scu	2026-10-06 19:25:35.164946135 +0000
+@@ -1160,6 +1160,36 @@
  var global703@703
  var global705@705
  var global706@706
@@ -29,11 +29,16 @@
 +var gRogueDump@742
 +var gRogueIFS@743
 +var gRogueSingle@744
++var gRogueSwat@745
++var gRogueCK1@746
++var gRogueCK2@747
++var gRogueCK3@748
++var gRogueAce@749
  
  ; FileMode
  const FOR-READ = 1
 --- clean/baseball.scu	2026-10-04 13:04:03.351341675 +0000
-+++ b/baseball.scu	2026-10-06 16:11:44.482532583 +0000
++++ b/baseball.scu	2026-10-06 19:25:35.169549953 +0000
 @@ -8184,7 +8184,7 @@
  }
  
@@ -59,7 +64,42 @@
                  gCollideVelX = 0
                  gCollideVelY = 0
                  gCollideVelZ = 0
-@@ -11020,8 +11029,8 @@
+@@ -9587,7 +9596,7 @@
+ }
+ 
+ script GetKidName@229 kid first_or_last {
+-    var local2 local3 local4 local5
++    var local2 local3 local4 local5 f key slot
+ 
+     undim gKidName
+     case 1 {
+@@ -10471,6 +10480,25 @@
+         }
+     }
+     L23a0:
++    ; Rogueball: custom CPU players play as an existing kid under a new name
++    if (gRogueActive && kid > 0) {
++        slot = -1
++        if (kid == gRogueCK1) {
++            slot = 0
++        } else if (kid == gRogueCK2) {
++            slot = 1
++        } else if (kid == gRogueCK3) {
++            slot = 2
++        }
++        if (slot >= 0) {
++            sprintf f "%srogue_in.ini" gSaveGamePath
++            sprintf key "n%d" slot
++            undim gKidName
++            gKidName = read-ini.string f "names" key
++            undim key
++            undim f
++        }
++    }
+     if first_or_last {
+         local3 = array-get-length gKidName - 1
+         local5 = -999
+@@ -11020,8 +11048,8 @@
                          gKidData[MARIA-LUNA][33] = 128
                      }
                      gKidData[MARIA-LUNA][33] = gKidData[MARIA-LUNA][33] + 2
@@ -69,7 +109,7 @@
              }
          }
          if (gTeamInfo[local3][TI-TEAM-NOUN] == 128 || gTeamInfo[local3][TI-TEAM-NOUN] == 126) {
-@@ -11498,8 +11507,22 @@
+@@ -11498,8 +11526,22 @@
          local10 = local9
          local11 = local9
          local12 = local9
@@ -92,7 +132,7 @@
          } else if (gTeamInfo[info_index][TI-PRIMARY-COLOR] == 8 && gTeamInfo[info_index][TI-SECONDARY-COLOR] == 8) {
              local6 = 125
              local6 -= 101
-@@ -13241,6 +13264,14 @@
+@@ -13241,6 +13283,14 @@
              } else {
                  local13 = gTeamInfo[arg0][TI-PRIMARY-COLOR]
                  local14 = gTeamInfo[arg0][TI-SECONDARY-COLOR]
@@ -107,7 +147,7 @@
                  if (not arg6) {
                      if (not (gNetplayActive || global696) && arg0 == gVisitorInfoIndex || (gNetplayActive || global696 && arg0 == 0)) {
                          local15 = gTeamInfo[arg0][TI-PRIMARY-COLOR]
-@@ -13964,7 +13995,7 @@
+@@ -13964,7 +14014,7 @@
  script StartQuickPickupGame@296 field_plus_one {
      gHomeInfoIndex = 1
      gVisitorInfoIndex = 0
@@ -116,7 +156,7 @@
          gGameLength = 12
      }
      if (not gGameMode) {
-@@ -19926,11 +19957,191 @@
+@@ -19926,11 +19976,197 @@
      start-object 72 1
  }
  
@@ -164,6 +204,12 @@
 +    gRogueMercy = read-ini.i32 f "setup" "mercy"
 +    gRogueIFS = read-ini.i32 f "setup" "ifs"
 +    gRogueDump = 0
++    gRogueSwat = 0
++    ; CPU custom players: these kid ids get a new name, and one may be the ace
++    gRogueCK1 = read-ini.i32 f "names" "k0"
++    gRogueCK2 = read-ini.i32 f "names" "k1"
++    gRogueCK3 = read-ini.i32 f "names" "k2"
++    gRogueAce = read-ini.i32 f "names" "ace"
 +    gNoCommentary = read-ini.i32 f "audio" "nocommentary"
 +    gNoGooch = read-ini.i32 f "audio" "nogooch"
 +    gNoBackgroundSound = read-ini.i32 f "audio" "nobackground"
@@ -309,7 +355,7 @@
          start-script smth_init
      } else {
          if (g_maybe_operating_system == 2) {
-@@ -19969,6 +20180,7 @@
+@@ -19969,6 +20205,7 @@
      if (g_maybe_operating_system == 2) {
          object.class 391 [160]
      }
@@ -318,7 +364,7 @@
  
  exit {
 --- clean/batview.scu	2026-10-04 13:04:03.342697806 +0000
-+++ b/batview.scu	2026-10-05 02:49:49.497976074 +0000
++++ b/batview.scu	2026-10-06 19:25:35.173820970 +0000
 @@ -936,7 +936,7 @@
      }
      gPitcherPitches[1 - gBattingTeamInfoIndex][slot] = 27 * 10
@@ -328,7 +374,25 @@
          while (gPitcherPitches[1 - gBattingTeamInfoIndex][slot] && slot < 10) {
              inc slot
          }
-@@ -1982,9 +1982,9 @@
+@@ -969,6 +969,17 @@
+     if (slot <= 10) {
+         array-assign-range gPitcherPitches (1 - gBattingTeamInfoIndex) (1 - gBattingTeamInfoIndex) slot 10 0 0
+     }
++    ; Rogueball ace: freeze, corkscrew, zig zag and spitball on top of the four normal pitches, never running out
++    if (gRogueActive && gRogueAce && 1 - gBattingTeamInfoIndex == 1) {
++        local3 = gTeamInfo[1][TI-FIELDING-ORDER]
++        if (local3[POS-PITCHER] == gRogueAce) {
++            gPitcherPitches[1][6] = PITCH-FREEZE * 10 + 9
++            gPitcherPitches[1][7] = PITCH-CORKSCREW * 10 + 9
++            gPitcherPitches[1][8] = PITCH-ZIG-ZAG * 10 + 9
++            gPitcherPitches[1][9] = PITCH-SPIT-BALL * 10 + 9
++            gPitcherPitches[1][10] = 0
++        }
++    }
+ }
+ 
+ local-script ForcePitchIntentionalWalk@2056 {
+@@ -1982,9 +1993,9 @@
      local3 = (local1 - 74) * 100 / 20
      do {
          local7 = 6 / gMinJiffies
@@ -341,7 +405,7 @@
          actor.init 8
          actor.at (local5 / 100) (local6 / 100)
      } until (actor-get-variable 8 1)
-@@ -2568,7 +2568,7 @@
+@@ -2568,7 +2579,7 @@
  }
  
  local-script SetHitAngles@2084 {
@@ -350,7 +414,7 @@
  
      case gCurrentSwing {
          SWING-POWER {
-@@ -2604,6 +2604,16 @@
+@@ -2604,6 +2615,16 @@
              angle_y_zone = 3
          }
      }
@@ -367,7 +431,7 @@
      if gTeeBall {
          rHitQuality = 2
      } else {
-@@ -2642,6 +2652,10 @@
+@@ -2642,6 +2663,10 @@
              rHitQuality = 1
          } else {
              gHitAngleXZ = -1
@@ -378,7 +442,7 @@
              stop-script 0
          }
      }
-@@ -2671,6 +2685,10 @@
+@@ -2671,6 +2696,10 @@
      }
      start-script SetBallHitVectors
      start-script PlayBatContactSound
@@ -389,7 +453,7 @@
  }
  
  local-script CalcHitQuality@2085 {
-@@ -3170,6 +3188,10 @@
+@@ -3170,6 +3199,10 @@
  local-script IncrementPowerup@2095 defense {
      var local1 local2 local3
  
@@ -400,7 +464,44 @@
      if defense {
          local1 = 1 - gBattingTeamInfoIndex
      } else {
-@@ -14174,10 +14196,14 @@
+@@ -3515,7 +3548,7 @@
+         }
+     }
+     gGivePowerup = 0
+-    if (rPitchKind > PITCH-RIGHT-HOOK) {
++    if (rPitchKind > PITCH-RIGHT-HOOK && not (gRogueActive && rPitcherKid == gRogueAce)) {
+         gGivePowerup = 1
+     }
+     if gNetplayActive {
+@@ -4073,6 +4106,12 @@
+     if (gTeeBall && result == SWING-BUNT) {
+         result = random-between 1 3
+     }
++    ; Rogueball: on hard, the CPU only bunts with its fastest runners (speed tier 9 and up)
++    if (gRogueActive && gDifficulty == HARD && gBattingTeamInfoIndex == 1 && in result [SWING-BUNT SWING-CRAZY-BUNT]) {
++        if (gKidData[gBatterKid][KD-SPEED] < 100) {
++            result = random-between 1 3
++        }
++    }
+     return result
+ }
+ 
+@@ -14086,10 +14125,13 @@
+     }
+     start-script CopyFielderPositionsToWorld
+     gKidData[rPitcherKid][KD-fatigue] = pitcher_new_fatigue
++    if (gRogueActive && rPitcherKid == gRogueAce) {
++        gKidData[rPitcherKid][KD-fatigue] = 0
++    }
+     if (gDefenseControlledBy == CB-USER) {
+         start-script smth_pitcher_fatigue_ui
+     }
+-    if (rPitchKind > PITCH-RIGHT-HOOK && rPitchKind != PITCH-INTENTIONAL-WALK) {
++    if (rPitchKind > PITCH-RIGHT-HOOK && rPitchKind != PITCH-INTENTIONAL-WALK && not (gRogueActive && rPitcherKid == gRogueAce)) {
+         for local5 = 6 to 10 + {
+             if (gPitcherPitches[1 - gBattingTeamInfoIndex][local5] / 10 == rPitchKind) {
+                 gPitcherPitches[1 - gBattingTeamInfoIndex][local5] = gPitcherPitches[1 - gBattingTeamInfoIndex][local5] - 1
+@@ -14174,10 +14216,14 @@
                  rPitchKind = 0
                  for local4 = 1 to 10 + {
                      if (gPitcherPitches[1 - gBattingTeamInfoIndex][local4] / 10 == 26) {
@@ -418,7 +519,7 @@
                          start-script RefreshPitchButtons
                          chain-script smth_ui_sprites 3
                      }
-@@ -14792,6 +14818,9 @@
+@@ -14792,6 +14838,9 @@
      rBattingOrderPosition = max 0 rBattingOrderPosition
      gBatterKid = rBattingOrderKids[rBattingOrderPosition]
      gBatterKidHitsBeforeNow = gGameStats[gBatterKid][STAT-HITS]
@@ -428,7 +529,7 @@
      if (not skip_net_wait && not same_batter) {
          global248 = 0
          if gNetplayActive {
-@@ -15098,6 +15127,9 @@
+@@ -15098,6 +15147,9 @@
      } else {
          start-script SendPitchResult
      }
@@ -438,7 +539,7 @@
      room39 = 1
      rBatterSwung = false
      break-here.multi 10
-@@ -15144,7 +15176,11 @@
+@@ -15144,7 +15196,11 @@
          } until gNetWaitFlag
          dec gNetWaitFlag
      }
@@ -451,7 +552,7 @@
      for temp = 1 to gActorPoolMax + {
          actor.init temp
          actor.animation-speed (6 / gMinJiffies)
-@@ -15263,6 +15299,278 @@
+@@ -15263,6 +15319,278 @@
      }
  }
  
@@ -730,7 +831,7 @@
  local-script EndTheGame@2215 {
      if gSeasonSpectatorMode {
          gSeasonSpectatorMode = false
-@@ -15833,6 +16141,10 @@
+@@ -15833,6 +16161,10 @@
      dim-array-2d.i16 gPitcherPitches 1 10
      undim g_maybe_powerup_state
      dim-array-2d.i16 g_maybe_powerup_state 1 4
@@ -741,7 +842,7 @@
      undim gGameInfo
      dim-array.i16 gGameInfo 62
      if (gBattingOrder1[0] == 0 && gBattingOrder1[1] == 0) {
-@@ -15978,7 +16290,11 @@
+@@ -15978,7 +16310,11 @@
      group.new
      start-script lsc2223
      start-script lsc2225
@@ -754,7 +855,7 @@
      for temp = 1 to gActorPoolMax + {
          actor.init temp
          actor.animation-speed (6 / gMinJiffies)
-@@ -16064,8 +16380,13 @@
+@@ -16064,8 +16400,13 @@
          object.state 301 0
          object.state 302 0
          object.state 303 0
@@ -836,7 +937,7 @@
      if (gUIInputDevice == INPUT-DEVICE-MOUSE) {
          cursor-on
 --- clean/overhed.scu	2026-10-04 13:04:03.346278057 +0000
-+++ b/overhed.scu	2026-10-06 16:11:29.963893799 +0000
++++ b/overhed.scu	2026-10-06 18:11:04.039382715 +0000
 @@ -110,6 +110,7 @@
      if local2 {
          break-until global504
@@ -916,7 +1017,15 @@
                          if (base > 4) {
                              base = 4
                          }
-@@ -5930,8 +5943,14 @@
+@@ -5923,15 +5936,28 @@
+ }
+ 
+ local-script WatchForInfieldFly@2119 {
+-    var local0
++    var local0 f line
+ 
+     if (call-script DoesInfieldFlyRuleApply) {
+         do {
              break-here
              inc local0
          } until (gBallVelPhysY < 384000 * gGravity / 60 || local0 > 40)
@@ -926,6 +1035,13 @@
 +        if (gRogueActive && gRogueIFS && gBattingTeamInfoIndex == 0) {
 +            gRogueSingle = 1
 +            gPlayEndedReason = PE-GROUND-RULE-DOUBLE
++            ; tell the page so it can play the swat
++            inc gRogueSwat
++            sprintf f "%srogue_live.ini" gSaveGamePath
++            sprintf line "%d,%d" gRogueSeq gRogueSwat
++            write-ini.string f "live" "w" line
++            undim line
++            undim f
 +        } else {
 +            gPlayEndedReason = PE-INFIELD-FLY
 +            rCaughtFly = true
@@ -933,7 +1049,7 @@
      }
  }
  
-@@ -6389,6 +6408,17 @@
+@@ -6389,6 +6415,17 @@
          }
          FIELDER-PITCHER {
              if g_maybe_play_is_ready_to_end {

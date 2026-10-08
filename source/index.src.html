@@ -40,8 +40,11 @@
   .gside .gh { font-family: "VT323", monospace; font-size: 18.5px; color: var(--yellow); background: #000; border-bottom: 2px solid var(--yellow-d); padding: 3px 6px; margin: 0 0 8px; text-transform: uppercase;}
   .gsec { margin-bottom: 14px; }
   #gCards { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 6px; }
-  #gCards .joker { width: 100%; max-width: min(200px, calc(((100vh - 90px) / 5 - 14px) * 5 / 7)); }
+  /* in-game cards: full column width, height from content, so names and live counts never get squeezed */
+  #gCards .joker { width: 100%; max-width: none; aspect-ratio: auto; }
   #gCards .joker p { display: none; }
+  #gCards .joker h4 { font-size: 24px; margin-top: 8px; overflow-wrap: anywhere; }
+  #gCards .joker .art { flex: none; font-size: 18px; padding: 4px; gap: 0; }
 
   .pus { display: flex; gap: 8px; flex-wrap: wrap; }
   .gwho { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -402,6 +405,8 @@
   @keyframes swatout { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
   .pill.r-rare { border-color: var(--r-rare); } .pill.r-epic { border-color: var(--r-epic); } .pill.r-legendary { border-color: var(--r-legendary); }
   #tip .spdtab { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--yellow-d); }
+  .pill.edge { border-color: var(--bad); }
+  #gTheirs:empty { display: none; } #gTheirs .pill { font-size: 16px; padding: 1px 6px; }
 </style>
 </head>
 <body>
@@ -409,6 +414,7 @@
 <aside class="gside" id="gLeft"><div class="gh">Cards</div><div id="gCards"></div></aside>
 <aside class="gside" id="gRight">
   <div class="gsec" id="gGame"></div>
+  <div class="gsec" id="gTheirs"></div>
   <div class="gsec"><div class="gh">Power-ups</div><div class="pus" id="hudPu"></div></div>
   <div class="gsec" id="gBat"></div>
   <div class="gsec"><div class="gh">Options</div><label class="vol">Volume <input type="range" id="hudVol" min="0" max="100"></label><button class="iconbtn" id="fsBtn">Fullscreen</button></div>
@@ -423,7 +429,7 @@
     <div class="tile"><b class="num" id="tBest">0</b><small>best run</small></div>
     <div class="puBar" id="puBar"></div>
     <label class="vol">Volume <input type="range" id="barVol" min="0" max="100"></label>
-    <button class="iconbtn" id="setBtn">Sound settings</button>
+    <button class="iconbtn" id="setBtn">Settings</button>
   </div>
   <main><div class="wrap">
 
@@ -678,7 +684,7 @@ const AUGMENTS = [
   { id: 'grandslammer', name: 'Grand Slammer', text: '+2 power to 1 player when the bases are loaded.', target: 'pick', cond: { c: 'loaded', d: { swing: 2 } } },
   { id: 'headstart', name: 'Head Start', text: '1 player starts every at bat with a 2-0 count.', target: 'pick', headstart: true },
   { id: 'jogger', name: 'Jogger', text: "Set 1 player's speed to 50.", target: 'pick', set: { speed: 50 } },
-  { id: 'shrinkray', name: 'Shrink Ray', text: 'Set 1 player to height 1, +10 speed.', target: 'pick', set: { height: 1 }, d: { speed: 10 } },
+  { id: 'shrinkray', name: 'Shrink Ray', text: 'Set 1 player to height 1, +20 speed.', target: 'pick', set: { height: 1 }, d: { speed: 20 } },
   { id: 'gaphitter', name: 'Gap Hitter', text: '+10 contact to 1 player when swinging line drive.', target: 'pick', cond: { c: 'liner', d: { hitting: 10 } } },
   { id: 'momentum', name: 'Momentum Batter', text: 'Experimental. 1 player gets +5 power, +5 contact after every hit and -5 power, -5 contact after every out. Resets each game.', target: 'pick', cond: { c: 'momentum', d: { swing: 5, hitting: 5 } } },
   { id: 'goldenglove', name: 'Golden Glove', text: '+10 coordination, +10 arm strength to 1 player.', target: 'pick', d: { coordination: 10, arm: 10 } },
@@ -686,7 +692,7 @@ const AUGMENTS = [
   { id: 'toughout', name: 'Tough Out', text: '+10 contact to 1 player with 2 strikes.', target: 'pick', cond: { c: 'twostrikes', d: { hitting: 10 } } },
   { id: 'clutch', name: 'Clutch', text: '+5 power, +5 contact to 1 player on a full count.', target: 'pick', cond: { c: 'fullcount', d: { swing: 5, hitting: 5 } } },
   { id: 'sacrifice', name: 'Sacrifice', text: '+$3 for every out 1 player makes (paid after a win).', target: 'pick', sacrifice: 3 },
-  { id: 'powergrounder', name: 'Power Grounder', text: '+10 power to 1 player when swinging grounder.', target: 'pick', cond: { c: 'grounder', d: { swing: 10 } } },
+  { id: 'powergrounder', name: 'Power Grounder', text: '+25 power to 1 player when swinging grounder.', target: 'pick', cond: { c: 'grounder', d: { swing: 25 } } },
 ];
 /* situational boosts: codes the game checks at the moment of contact */
 const COND = {
@@ -702,10 +708,10 @@ const COND = {
 /* cards: who = team (the nine in the lineup) | opp | of | slots | minspeed | pick */
 const CARDS = [
   { id: 'clumsy', name: 'Clumsy', rarity: 'common', text: 'Opposing players have -5 coordination.', who: 'opp', d: { coordination: -5 }, retired: true },
-  { id: 'uncoord-c', name: 'Uncoordinated', rarity: 'common', text: 'Opposing players have -5 coordination.', who: 'opp', d: { coordination: -5 } },
-  { id: 'uncoord-r', name: 'Uncoordinated', rarity: 'rare', text: 'Opposing players have -7 coordination.', who: 'opp', d: { coordination: -7 } },
-  { id: 'uncoord-e', name: 'Uncoordinated', rarity: 'epic', text: 'Opposing players have -10 coordination.', who: 'opp', d: { coordination: -10 } },
-  { id: 'uncoord-l', name: 'Uncoordinated', rarity: 'legendary', text: 'Opposing players have -15 coordination.', who: 'opp', d: { coordination: -15 } },
+  { id: 'uncoord-c', name: 'Uncoordinated', rarity: 'common', text: 'Opposing players have -10 coordination.', who: 'opp', d: { coordination: -10 } },
+  { id: 'uncoord-r', name: 'Uncoordinated', rarity: 'rare', text: 'Opposing players have -15 coordination.', who: 'opp', d: { coordination: -15 } },
+  { id: 'uncoord-e', name: 'Uncoordinated', rarity: 'epic', text: 'Opposing players have -20 coordination.', who: 'opp', d: { coordination: -20 } },
+  { id: 'uncoord-l', name: 'Uncoordinated', rarity: 'legendary', text: 'Opposing players have -30 coordination.', who: 'opp', d: { coordination: -30 } },
   { id: 'ghostcal', name: 'Ghost Cal', rarity: 'common', text: '+10 team stamina.', who: 'team', d: { stamina: 10 } },
   { id: 'bp-c', name: 'Batting Practice', rarity: 'common', text: '+3 team contact.', who: 'team', d: { hitting: 3 } },
   { id: 'bp-r', name: 'Batting Practice', rarity: 'rare', text: '+5 team contact.', who: 'team', d: { hitting: 5 } },
@@ -869,7 +875,7 @@ const inRank = (lo, hi) => POOL.filter(p => p.mr >= lo && p.mr <= hi);
 
 const SAVE_KEY = 'bbRogueball.v3';
 let run = null, meta = { best: 0, runs: 0 };
-let settings = { music: false, commentary: false, gooch: false, crowd: false, playerTalking: false, playerChatter: false, reelSound: true, autoplay: false };
+let settings = { music: false, commentary: false, gooch: false, crowd: false, playerTalking: false, playerChatter: false, reelSound: true, autoplay: false, lowLatency: false };
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run, meta, settings })); } catch (e) {} }
 function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s) { run = s.run; meta = s.meta || meta; settings = { ...settings, ...(s.settings || {}) }; if (run && run.shop) run.shop = run.shop.map(x => typeof x === 'string' ? { type: 'card', id: x } : x); } } catch (e) {} }
 const PU_KEYS = CONFIG.powerups.map(p => p.k);
@@ -1097,7 +1103,7 @@ function statSources(id) {
   }
   if (opp) {
     for (const c of activeCards()) { const C = CARD[c.id]; if (C.who === 'opp') out.push({ src: C.name, txt: C.text, d: C.d || {}, set: {}, min: C.min || {} }); }
-    if (run.next.boost) out.push({ src: 'CPU boost', d: { hitting: run.next.boost, swing: run.next.boost, eye: run.next.boost }, set: {}, min: {} });
+    out.push(...cpuEdges(run.next));
     for (const [x, src] of cpuSources(run.next)) if (x === id) out.push(src);
     return out;
   }
@@ -1220,6 +1226,14 @@ function cpuSources(n) {
   }
   for (const b of n.cpuBoosts || []) { const A = AUG[b.id]; if (A && n.ids.includes(b.on)) out.push([b.on, { d: A.d || {}, set: A.set || {}, min: A.min || {}, src: A.name, txt: A.text }]); }
   return out;
+}
+// the CPU's flat hitting bonus, split into the named reasons it has it
+function cpuEdges(n) {
+  if (!n || !n.boost) return [];
+  const rival = n.rival ? Math.min(4, n.boost) : 0, late = n.boost - rival, out = [];
+  if (late) out.push({ src: 'Late-run edge', txt: `From game 16 on, every CPU hitter gets +2 power, contact and vision per game. This game: +${late}.`, v: late });
+  if (rival) out.push({ src: 'Rivalry', txt: `Rivalry games (every 5th): CPU hitters get +${rival} power, contact and vision.`, v: rival });
+  return out.map(e => ({ ...e, d: { hitting: e.v, swing: e.v, eye: e.v }, set: {}, min: {} }));
 }
 const cpuCardOk = C => !C.retired && !C.cond && !C.perKid && !C.perPro && !C.freePu && !C.freeShop && !C.ifs && ['team', 'slots', 'pos', 'of'].includes(C.who) && (C.d || C.min);
 const cpuBoostOk = A => !A.retired && A.target === 'pick' && !A.cond && !A.headstart && !A.money && !A.pu && !A.sacrifice && (A.d || A.set || A.min);
@@ -1532,7 +1546,7 @@ function renderReel() {
     reel.children[WIN_AT].classList.add('win');
     if (DUR) { Sound.tick(523, 0.18); setTimeout(() => Sound.tick(784, 0.3), 140); }
     $('reveal').innerHTML = `<div class="what">${n.tee ? 'Bonus: tee ball at ' : ''}${PARK[n.field]}, ${n.innings} innings</div>
-      <div class="sub">${n.rival ? 'Rivalry game: stronger lineup, bonus payout. ' : ''}${DIFF[n.difficulty]} CPU${n.boost ? `, their hitters +${n.boost}` : ''}</div>`;
+      <div class="sub">${n.rival ? 'Rivalry game: stronger lineup, bonus payout. ' : ''}${DIFF[n.difficulty]} CPU${cpuEdges(n).map(e => `, ${e.src.toLowerCase()} +${e.v}`).join('')}</div>`;
     $('reelGo').hidden = false; $('reelGo').focus();
     $('reelReroll').hidden = false;
     $('reelReroll').textContent = `Spin again ($${run.fieldRerollCost})`;
@@ -1572,6 +1586,7 @@ function renderDiamond(el, field) {
 }
 function renderHub() {
   topbar();
+  if (run.next && run.next.cpuCards === undefined) { cpuLoadout(run.next, run.game); save(); }
   const n = run.next, L = gameLayers();
   $('hubName').innerHTML = nameSelectsHTML();
   wireNameSelects($('hubName'));
@@ -1592,10 +1607,10 @@ function renderHub() {
   $('oppBox').innerHTML = `<h3>Game ${run.game}${n.rival ? ' <span class="boss">Rivalry</span>' : ''}</h3>
     <img class="oppfield" src="${FIELD_IMG(n.field)}" alt="">
     <dl class="facts"><dt>Team</dt><dd>${esc(cpuTeamName(n))}</dd><dt>Park</dt><dd>${PARK[n.field]}${n.tee ? ', tee ball' : ''}</dd><dt>Length</dt><dd>${n.innings} innings, mercy at ${CONFIG.mercy}</dd>
-    <dt>CPU</dt><dd>${DIFF[n.difficulty]}${n.boost ? `, hitters +${n.boost}` : ''}</dd></dl>
-    ${(n.cpuCards || []).length ? `<div class="gh" style="margin-top:8px">Their cards</div><div class="chips">${n.cpuCards.map(cid => `<span class="pill r-${CARD[cid].rarity}" data-tiptext="${esc('t:' + CARD[cid].name + ' (' + RAR_LABEL[CARD[cid].rarity] + ')|' + CARD[cid].text)}">${esc(CARD[cid].name)}</span>`).join('')}</div>` : ''}
+    <dt>CPU</dt><dd>${DIFF[n.difficulty]}</dd></dl>
+    <div class="gh" style="margin-top:8px">Their lineup</div><div class="chips">${n.order.map(id => `<button class="pill" data-card="${id}" data-tip="${id}">${POS[n.pos[id]]} ${esc(BY_ID[id].name)}</button>`).join('')}</div>
+    ${(n.cpuCards || []).length || cpuEdges(n).length ? `<div class="gh" style="margin-top:8px">Their cards</div><div class="chips">${cpuEdges(n).map(e => `<span class="pill edge" data-tiptext="${esc('t:' + e.src + '|' + e.txt)}">${esc(e.src)} +${e.v}</span>`).join('')}${(n.cpuCards || []).map(cid => `<span class="pill r-${CARD[cid].rarity}" data-tiptext="${esc('t:' + CARD[cid].name + ' (' + RAR_LABEL[CARD[cid].rarity] + ')|' + CARD[cid].text)}">${esc(CARD[cid].name)}</span>`).join('')}</div>` : ''}
     ${(n.cpuBoosts || []).length ? `<div class="gh" style="margin-top:8px">Their boosts</div><div class="chips">${n.cpuBoosts.map(b => `<span class="pill" data-tiptext="${esc('t:' + AUG[b.id].name + '|' + AUG[b.id].text)}">${esc(AUG[b.id].name)}: ${esc(shortName(b.on))}</span>`).join('')}</div>` : ''}
-    <div class="chips" style="margin-top:8px">${n.order.map(id => `<button class="pill" data-card="${id}" data-tip="${id}">${POS[n.pos[id]]} ${esc(BY_ID[id].name)}</button>`).join('')}</div>
     <div class="row-actions"><button class="btn big" id="playBtn">Play ball</button></div>`;
   $('oppBox').querySelectorAll('[data-card]').forEach(b => b.onclick = () => showCard(+b.dataset.card, { boosted: true }));
   $('playBtn').onclick = startGame;
@@ -1990,11 +2005,17 @@ function resume() {
 /* ---- sound settings ---- */
 function openSettings() {
   const opt = (k, label) => `<label class="opt"><input type="checkbox" data-set="${k}" ${settings[k] ? 'checked' : ''}> ${label}</label>`;
-  openModal(`<h3>Sound settings</h3>
+  openModal(`<h3>Settings</h3>
     ${opt('music', 'Game music')}${opt('commentary', 'Play-by-play commentary')}${opt('gooch', 'Extra announcer chatter')}${opt('crowd', 'Crowd and background sound')}${opt('playerTalking', 'Players talking')}${opt('playerChatter', 'Infield chatter')}${opt('reelSound', 'Reel ticks')}
+    <h3 class="sub">Performance</h3>${opt('lowLatency', 'Low-latency drawing (for input lag; reload the page after changing)')}
+    <p class="small" id="llStatus"></p>
     <h3 class="sub">Testing</h3>${opt('autoplay', 'Sim games (the CPU plays your side)')}
     <div class="row-actions"><button class="btn ghost" data-close>Done</button></div>`);
   $('modalInner').querySelectorAll('[data-set]').forEach(c => c.onchange = () => { settings[c.dataset.set] = c.checked; save(); });
+  try {
+    const a = window.__glAttrs;
+    $('llStatus').textContent = !a ? 'The game has not started yet, so the drawing mode is not set.' : a.desynchronized ? 'Low-latency drawing is on in this browser.' : settings.lowLatency ? 'This browser ignored the low-latency request. Reload the page if you just turned it on.' : 'Low-latency drawing is off.';
+  } catch (e) {}
 }
 $('setBtn').onclick = openSettings;
 document.querySelectorAll('#barVol,#hudVol').forEach(i => { i.value = Sound.get(); i.oninput = () => Sound.set(i.value); });
@@ -2084,7 +2105,11 @@ const Panel = (() => {
       ${sit ? `<p class="gsit">${esc(sit)}</p>` : ''}`);
   }
   function renderCards() {
-    const act = activeCards();
+    const act = activeCards(), n = run.next;
+    const theirs = n ? [...cpuEdges(n).map(e => `<span class="pill edge" data-tiptext="${esc('t:' + e.src + '|' + e.txt)}">${esc(e.src)} +${e.v}</span>`),
+      ...(n.cpuCards || []).map(cid => `<span class="pill r-${CARD[cid].rarity}" data-tiptext="${esc('t:' + CARD[cid].name + ' (' + RAR_LABEL[CARD[cid].rarity] + ')|' + CARD[cid].text)}">${esc(CARD[cid].name)}</span>`),
+      ...(n.cpuBoosts || []).map(b => `<span class="pill" data-tiptext="${esc('t:' + AUG[b.id].name + '|' + AUG[b.id].text)}">${esc(AUG[b.id].name)}: ${esc(shortName(b.on))}</span>`)] : [];
+    put($('gTheirs'), theirs.length ? `<div class="gh">Their cards and boosts</div><div class="chips small">${theirs.join('')}</div>` : '');
     put($('gCards'), act.length ? act.map(c => jokerHTML(c.id, { on: c.on, live: true, f: live })).join('') : '<p class="small">No cards.</p>');
   }
   function renderGame() {
@@ -2092,7 +2117,7 @@ const Panel = (() => {
     const inn = f && f.half >= 0 ? Math.floor(f.half / 2) + 1 : 1, top = !f || f.half % 2 === 0;
     put($('gGame'), `<div class="gh">Game ${run.game}: ${total} inning${total === 1 ? '' : 's'}</div>
       <div class="gscore"><div class="inn"><small>Inning</small><b>${f ? `${top ? 'Top' : 'Bot'} ${inn}` : '1'}<i> of ${total}</i></b></div>
-      <div class="inn"><small>Difficulty</small><b>${esc(DIFF[n.difficulty])}</b>${n.boost ? `<small>CPU hitters +${n.boost}</small>` : ''}</div></div>
+      <div class="inn"><small>Difficulty</small><b>${esc(DIFF[n.difficulty])}</b>${cpuEdges(n).map(e => `<small>${esc(e.src)} +${e.v}</small>`).join('')}</div></div>
       <p class="gsit">${esc(PARK[n.field])}${n.tee ? ', tee ball' : ''}, mercy at ${CONFIG.mercy}${inn > n.innings ? ', extra innings' : ''}</p>
       <div class="gbank"><small>Bank</small><b class="num">$${run.money}</b></div>`);
   }
@@ -2127,9 +2152,43 @@ const Engine = (() => {
   const IN = SAVE_DIR + '/baseball2001-rogue_in.ini', OUT = SAVE_DIR + '/baseball2001-rogue_out.ini', LIVE = SAVE_DIR + '/baseball2001-rogue_live.ini';
   const PATCHES = { 'baseball 2001.he0': 'patches/he0.bbrp', 'baseball 2001.(a)': 'patches/a.bbrp', 'baseball 2001.(b)': 'patches/b.bbrp' };
   const NEEDED = ['baseball 2001.he0', 'baseball 2001.(a)', 'baseball 2001.(b)', 'baseball 2001.he2', 'baseball 2001.he4', 'baseball 2001.he9'];
-  const PATCH_VER = '18';
+  const PATCH_VER = '19';
   let booted = false, ready = false, onReady = null, pollTimer = null, liveTimer = null;
   const sync = populate => new Promise((res, rej) => FS.syncfs(populate, e => e ? rej(e) : res()));
+  // game files are kept in our own IndexedDB store, split into 16 MB pieces: browsers cap a single stored value
+  // (incognito Chrome at about 133 MB), and "baseball 2001.(a)" alone is 141 MB
+  const Store = (() => {
+    const CH = 16 << 20, DB = 'bbRogueGame';
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open(DB, 1); r.onupgradeneeded = () => { r.result.createObjectStore('chunks'); r.result.createObjectStore('meta'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const done = tx => new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = tx.onabort = () => rej(tx.error || new Error('storage write failed')); });
+    const get = (db, st, k) => new Promise((res, rej) => { const r = db.transaction(st).objectStore(st).get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    async function save(files) {
+      const db = await open();
+      try {
+        let tx = db.transaction('meta', 'readwrite'); tx.objectStore('meta').delete('manifest'); await done(tx);
+        const man = { ver: 'orig', files: {} };
+        for (const [name, data] of Object.entries(files)) {
+          const n = Math.ceil(data.length / CH); man.files[name] = n;
+          for (let i = 0; i < n; i++) { tx = db.transaction('chunks', 'readwrite'); tx.objectStore('chunks').put(data.slice(i * CH, (i + 1) * CH), name + '#' + i); await done(tx); }
+        }
+        tx = db.transaction('meta', 'readwrite'); tx.objectStore('meta').put(man, 'manifest'); await done(tx);
+      } finally { db.close(); }
+    }
+    async function load() {
+      const db = await open();
+      try {
+        const man = await get(db, 'meta', 'manifest'); if (!man) return null;
+        const out = {};
+        for (const [name, n] of Object.entries(man.files)) {
+          const parts = []; let len = 0;
+          for (let i = 0; i < n; i++) { const c = await get(db, 'chunks', name + '#' + i); if (!c) return null; parts.push(c); len += c.length; }
+          const u = new Uint8Array(len); let o = 0; for (const c of parts) { u.set(c, o); o += c.length; } out[name] = u;
+        }
+        return { ver: man.ver, files: out };
+      } finally { db.close(); }
+    }
+    return { save, load };
+  })();
   const exists = p => FS.analyzePath(p).exists;
   function mkdirp(path) { let cur = ''; for (const part of path.split('/').filter(Boolean)) { cur += '/' + part; if (!exists(cur)) FS.mkdir(cur); } }
   const patchVer = () => exists(GAME_DIR + '/.patched') ? new TextDecoder().decode(FS.readFile(GAME_DIR + '/.patched')).trim() : '';
@@ -2161,9 +2220,11 @@ const Engine = (() => {
       return false;
     }
     mkdirp(GAME_DIR);
+    const keep = {};
     for (const n of NEEDED) {
       status(`Reading ${n}…`);
       let data = new Uint8Array(await byName[n].arrayBuffer());
+      keep[n] = data;
       if (PATCHES[n]) {
         status(`Patching ${n}…`);
         const pr = await fetch(PATCHES[n] + '?v=' + PATCH_VER); if (!pr.ok) throw new Error('could not load ' + PATCHES[n]);
@@ -2173,7 +2234,8 @@ const Engine = (() => {
     }
     FS.writeFile(GAME_DIR + '/.patched', PATCH_VER);
     status('Saving to browser storage…');
-    await sync(false);
+    try { await Store.save(keep); try { indexedDB.deleteDatabase('/games'); } catch (e) {} }
+    catch (e) { console.warn(e); $('titleStatus').textContent = 'The game is loaded, but this browser would not save the files (private windows often limit storage), so you will need to pick them again next time.'; }
     return true;
   }
   async function readOut(path = OUT) {
@@ -2226,9 +2288,22 @@ const Engine = (() => {
     onAbort: what => { setPlaying(false); $('titleStatus').textContent = 'The game engine crashed: ' + what + '. Reload the page; your run is saved.'; show('scr-title'); },
     async onRuntimeInitialized() {
       mkdirp('/games'); mkdirp(HOME);
-      FS.mount(FS.filesystems.IDBFS, {}, '/games');
       FS.mount(FS.filesystems.IDBFS, { autoPersist: true }, HOME);
       await sync(true).catch(e => console.warn(e));
+      try {
+        const got = await Store.load();
+        // the store keeps the player's original files; the current patch is applied on every load,
+        // so a game update never means picking the folder again
+        if (got && got.ver === 'orig') {
+          mkdirp(GAME_DIR);
+          for (const [n, d] of Object.entries(got.files)) {
+            let data = d;
+            if (PATCHES[n]) { const pr = await fetch(PATCHES[n] + '?v=' + PATCH_VER); if (!pr.ok) throw new Error('could not load ' + PATCHES[n]); data = applyPatch(d, new Uint8Array(await pr.arrayBuffer())); }
+            FS.writeFile(GAME_DIR + '/' + n, data);
+          }
+          FS.writeFile(GAME_DIR + '/.patched', PATCH_VER);
+        } else if (got) { mkdirp(GAME_DIR); FS.writeFile(GAME_DIR + '/.patched', got.ver); }
+      } catch (e) { console.warn(e); }
       ready = true; onReady && onReady();
     }
   };
@@ -2273,7 +2348,7 @@ Engine.whenReady(() => Engine.hasGame() ? showTitle() : show('scr-import'));
 /* long descriptions: step the text down (not below 16px) until the card or boost keeps its shape */
 (() => {
   const fit = el => {
-    if (!el.clientWidth) return;
+    if (!el.clientWidth || el.closest('#gCards')) return;
     const w = el.clientWidth; if (el.dataset.fitw == w) return; el.dataset.fitw = w;
     const ps = el.querySelectorAll('p, h4'); ps.forEach(p => p.style.fontSize = '');
     const target = el.classList.contains('ticket') ? el.clientWidth : el.clientWidth * 7 / 5;
@@ -2313,6 +2388,21 @@ Engine.whenReady(() => Engine.hasGame() ? showTitle() : show('scr-import'));
   document.addEventListener('pointerout', e => { const t = e.target.closest && e.target.closest('.tilt'); if (t && !t.contains(e.relatedTarget)) ['--rx', '--ry', '--mx', '--my'].forEach(k => t.style.removeProperty(k)); });
 })();
 window.__G = { get run() { return run; }, set run(v) { run = v; }, Panel, CONFIG, AUGMENTS, CARDS, settings, onResult, renderHub, renderReel, save, BY_ID, startRound, gameLayers, finalStats, kidBonuses, startGame, applyAugment, dumpsterCoin, renderAugment, flySwat, makeOpponent, PLAYERS };
+})();
+</script>
+<script>
+// Low-latency drawing (settings): ask the browser to put each game frame straight on screen instead of queueing it.
+// It has to be in place before the game makes its canvas, so it reads the saved setting directly and takes effect on the next load.
+(function () {
+  var on = false;
+  try { var s = JSON.parse(localStorage.getItem('bbRogueball.v3') || 'null'); on = !!(s && s.settings && s.settings.lowLatency); } catch (e) {}
+  var orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+    if (on && /webgl/.test(type)) attrs = Object.assign({}, attrs, { desynchronized: true, powerPreference: 'high-performance', antialias: false });
+    var ctx = orig.call(this, type, attrs);
+    if (ctx && /webgl/.test(type) && ctx.getContextAttributes) window.__glAttrs = ctx.getContextAttributes();
+    return ctx;
+  };
 })();
 </script>
 <script src="scummvm.js"></script>

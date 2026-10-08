@@ -364,7 +364,7 @@
  
  exit {
 --- clean/batview.scu	2026-10-04 13:04:03.342697806 +0000
-+++ b/batview.scu	2026-10-06 19:25:35.173820970 +0000
++++ b/batview.scu	2026-10-07 02:58:18.146458164 +0000
 @@ -936,7 +936,7 @@
      }
      gPitcherPitches[1 - gBattingTeamInfoIndex][slot] = 27 * 10
@@ -392,7 +392,18 @@
  }
  
  local-script ForcePitchIntentionalWalk@2056 {
-@@ -1982,9 +1993,9 @@
+@@ -1622,6 +1633,10 @@
+ }
+ 
+ local-script AIDecideWhetherChangePicther@2068 {
++    ; Rogueball: the CPU never pulls its ace
++    if (gRogueActive && rPitcherKid == gRogueAce) {
++        stop-script 0
++    }
+     if (not gNetplayActive) {
+         if (gKidData[rPitcherKid][KD-fatigue] > 75) {
+             if (random 25 > 110 - gKidData[rPitcherKid][KD-fatigue]) {
+@@ -1982,9 +1997,9 @@
      local3 = (local1 - 74) * 100 / 20
      do {
          local7 = 6 / gMinJiffies
@@ -405,7 +416,7 @@
          actor.init 8
          actor.at (local5 / 100) (local6 / 100)
      } until (actor-get-variable 8 1)
-@@ -2568,7 +2579,7 @@
+@@ -2568,7 +2583,7 @@
  }
  
  local-script SetHitAngles@2084 {
@@ -414,7 +425,7 @@
  
      case gCurrentSwing {
          SWING-POWER {
-@@ -2604,6 +2615,16 @@
+@@ -2604,6 +2619,16 @@
              angle_y_zone = 3
          }
      }
@@ -431,7 +442,7 @@
      if gTeeBall {
          rHitQuality = 2
      } else {
-@@ -2642,6 +2663,10 @@
+@@ -2642,6 +2667,10 @@
              rHitQuality = 1
          } else {
              gHitAngleXZ = -1
@@ -442,7 +453,7 @@
              stop-script 0
          }
      }
-@@ -2671,6 +2696,10 @@
+@@ -2671,6 +2700,10 @@
      }
      start-script SetBallHitVectors
      start-script PlayBatContactSound
@@ -453,7 +464,7 @@
  }
  
  local-script CalcHitQuality@2085 {
-@@ -3170,6 +3199,10 @@
+@@ -3170,6 +3203,10 @@
  local-script IncrementPowerup@2095 defense {
      var local1 local2 local3
  
@@ -464,7 +475,7 @@
      if defense {
          local1 = 1 - gBattingTeamInfoIndex
      } else {
-@@ -3515,7 +3548,7 @@
+@@ -3515,7 +3552,7 @@
          }
      }
      gGivePowerup = 0
@@ -473,7 +484,7 @@
          gGivePowerup = 1
      }
      if gNetplayActive {
-@@ -4073,6 +4106,12 @@
+@@ -4073,6 +4110,12 @@
      if (gTeeBall && result == SWING-BUNT) {
          result = random-between 1 3
      }
@@ -486,7 +497,7 @@
      return result
  }
  
-@@ -14086,10 +14125,13 @@
+@@ -14086,10 +14129,13 @@
      }
      start-script CopyFielderPositionsToWorld
      gKidData[rPitcherKid][KD-fatigue] = pitcher_new_fatigue
@@ -501,7 +512,7 @@
          for local5 = 6 to 10 + {
              if (gPitcherPitches[1 - gBattingTeamInfoIndex][local5] / 10 == rPitchKind) {
                  gPitcherPitches[1 - gBattingTeamInfoIndex][local5] = gPitcherPitches[1 - gBattingTeamInfoIndex][local5] - 1
-@@ -14174,10 +14216,14 @@
+@@ -14174,10 +14220,14 @@
                  rPitchKind = 0
                  for local4 = 1 to 10 + {
                      if (gPitcherPitches[1 - gBattingTeamInfoIndex][local4] / 10 == 26) {
@@ -519,7 +530,7 @@
                          start-script RefreshPitchButtons
                          chain-script smth_ui_sprites 3
                      }
-@@ -14792,6 +14838,9 @@
+@@ -14792,6 +14842,9 @@
      rBattingOrderPosition = max 0 rBattingOrderPosition
      gBatterKid = rBattingOrderKids[rBattingOrderPosition]
      gBatterKidHitsBeforeNow = gGameStats[gBatterKid][STAT-HITS]
@@ -529,7 +540,18 @@
      if (not skip_net_wait && not same_batter) {
          global248 = 0
          if gNetplayActive {
-@@ -15098,6 +15147,9 @@
+@@ -14829,6 +14882,10 @@
+         players = gTeamInfo[1 - gBattingTeamInfoIndex][TI-FIELDING-ORDER]
+         rPitcherKid = players[POS-PITCHER]
+         if (rPitcherKid != gPitcherPitches[1 - gBattingTeamInfoIndex][0]) {
++            ; Rogueball: the ace's power-up pitches leave with her
++            if (gRogueActive && gRogueAce && 1 - gBattingTeamInfoIndex == 1 && rPitcherKid != gRogueAce) {
++                array-assign-range gPitcherPitches 1 1 6 10 0 0
++            }
+             gAIGuessedPitchLocationX = 0
+             if (gPitcherPitches[1 - gBattingTeamInfoIndex][1] == 0) {
+                 start-script FillPitcherPitches
+@@ -15098,6 +15155,9 @@
      } else {
          start-script SendPitchResult
      }
@@ -539,7 +561,7 @@
      room39 = 1
      rBatterSwung = false
      break-here.multi 10
-@@ -15144,7 +15196,11 @@
+@@ -15144,7 +15204,11 @@
          } until gNetWaitFlag
          dec gNetWaitFlag
      }
@@ -552,7 +574,7 @@
      for temp = 1 to gActorPoolMax + {
          actor.init temp
          actor.animation-speed (6 / gMinJiffies)
-@@ -15263,6 +15319,278 @@
+@@ -15263,6 +15327,278 @@
      }
  }
  
@@ -831,7 +853,7 @@
  local-script EndTheGame@2215 {
      if gSeasonSpectatorMode {
          gSeasonSpectatorMode = false
-@@ -15833,6 +16161,10 @@
+@@ -15833,6 +16169,10 @@
      dim-array-2d.i16 gPitcherPitches 1 10
      undim g_maybe_powerup_state
      dim-array-2d.i16 g_maybe_powerup_state 1 4
@@ -842,7 +864,7 @@
      undim gGameInfo
      dim-array.i16 gGameInfo 62
      if (gBattingOrder1[0] == 0 && gBattingOrder1[1] == 0) {
-@@ -15978,7 +16310,11 @@
+@@ -15978,7 +16318,11 @@
      group.new
      start-script lsc2223
      start-script lsc2225
@@ -855,7 +877,7 @@
      for temp = 1 to gActorPoolMax + {
          actor.init temp
          actor.animation-speed (6 / gMinJiffies)
-@@ -16064,8 +16400,13 @@
+@@ -16064,8 +16408,13 @@
          object.state 301 0
          object.state 302 0
          object.state 303 0
